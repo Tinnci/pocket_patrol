@@ -9,7 +9,7 @@ alwaysApply: false
 - 采用 MVVM 架构，分层清晰：
   - 页面（UI）：[lib/screens/](mdc:lib/screens)，如 [live_view_screen.dart](mdc:lib/screens/live_view_screen.dart)、[recordings_screen.dart](mdc:lib/screens/recordings_screen.dart)、[settings_screen.dart](mdc:lib/screens/settings_screen.dart)
   - 视图模型（ViewModel）：[lib/viewmodels/](mdc:lib/viewmodels)，如 [live_view_viewmodel.dart](mdc:lib/viewmodels/live_view_viewmodel.dart)、[recordings_viewmodel.dart](mdc:lib/viewmodels/recordings_viewmodel.dart)、[settings_viewmodel.dart](mdc:lib/viewmodels/settings_viewmodel.dart)
-  - 服务（Service）：[lib/services/](mdc:lib/services)，如 [camera_service.dart](mdc:lib/services/camera_service.dart)、[recording_service.dart](mdc:lib/services/recording_service.dart)、[settings_service.dart](mdc:lib/services/settings_service.dart)、[streaming_service.dart](mdc:lib/services/streaming_service.dart)、[image_conversion_service.dart](mdc:lib/services/image_conversion_service.dart)
+  - 服务（Service）：[lib/services/](mdc:lib/services)，如 [camera_service.dart](mdc:lib/services/camera_service.dart)、[recording_service.dart](mdc:lib/services/recording_service.dart)、[settings_service.dart](mdc:lib/services/settings_service.dart)、[streaming_service.dart](mdc:lib/services/streaming_service.dart)、[image_conversion_service.dart](mdc:lib/services/image_conversion_service.dart)、[webrtc_streaming_service.dart](mdc:lib/services/webrtc_streaming_service.dart)、[signaling_service.dart](mdc:lib/services/signaling_service.dart)
   - 仓库（Repository）：[lib/repositories/](mdc:lib/repositories)，预留数据持久化与远程/本地切换扩展
 - 全局状态管理：使用 Provider（[main.dart](mdc:lib/main.dart)），所有 ViewModel 通过 MultiProvider 注入，UI 响应式。
 - 设计风格参考 Figma/HTML 设计稿，优先保证界面一致性和可用性。
@@ -29,14 +29,21 @@ alwaysApply: false
    - StreamingService 基于 shelf 实现 MJPEG HTTP 流媒体服务器，支持认证、端口配置。
    - ImageConversionService 支持 CameraImage → JPEG 转换。
    - LiveViewViewModel/Screen 支持一键推流、推流状态、推流地址展示。
-5. **全局 Provider 注入**
+5. **WebRTC 推流与自动化信令（多端）**
+   - WebRTCStreamingService 支持摄像头 WebRTC 推流。
+   - SignalingService 支持 WebSocket 自动信令，支持多端协商。
+   - LiveViewViewModel/Screen 支持 WebRTC 推流控制、SDP/ICE 自动交换。
+6. **二维码分享与 Tailscale IP 支持**
+   - 支持生成二维码，包含 ws 地址、roomToken 等，便于观看端扫码自动连接。
+   - 支持自动获取 Tailscale 虚拟网卡 IP。
+7. **全局 Provider 注入**
    - main.dart 启动时自动加载设置和数据，所有页面响应式。
 
 ---
 
 ## 下一阶段目标（Goal）
 
-- **WebRTC 推流与远程访问**：实现 WebRTCStreamingService，支持更高效的视频流、音频、NAT 穿透，为多端互通和更低延迟做准备。
+- **观看端扫码自动连接与 WebRTC 播放**：实现扫码后自动连接信令服务器，自动完成 SDP/ICE 协商并播放远程视频流。
 - **安全认证与 Token 管理**：完善 Token 生成、校验、推流认证，提升安全性。
 - **设置项扩展与持久化**：支持分辨率、运动检测灵敏度、Tailscale IP 等更多设置项。
 - **录像仓库与数据同步**：预留本地/远程录像数据同步接口，支持云端同步。

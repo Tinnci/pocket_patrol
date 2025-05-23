@@ -24,6 +24,7 @@ dependencies:
   shelf_router: ^1.1.4
   image: ^4.5.4
   flutter_webrtc: ^0.14.1
+  qr_flutter: ^3.0.2
 
 dev_dependencies:
   # analysis_defaults:
