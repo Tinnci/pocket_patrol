@@ -1,10 +1,14 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- 摄像头权限（必须） -->
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- 录音权限（如需录制视频带音频/音频流） -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- 存储权限（如需保存图片/视频到本地，Android 10 及以下需要） -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29"/>
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29"
+        tools:replace="android:maxSdkVersion"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
     <!-- Android 14+ 后台摄像头流权限 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />

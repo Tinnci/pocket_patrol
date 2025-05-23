@@ -6,17 +6,32 @@ class RecordingsViewModel extends ChangeNotifier {
   final RecordingService recordingService;
 
   List<RecordingItem> recordings = [];
+  bool isLoading = false;
+  String? error;
 
   RecordingsViewModel({required this.recordingService});
 
   Future<void> loadRecordings() async {
-    recordings = await recordingService.getRecordings();
+    isLoading = true;
+    error = null;
+    notifyListeners();
+    try {
+      recordings = await recordingService.getRecordings();
+    } catch (e) {
+      error = '加载录像失败: $e';
+    }
+    isLoading = false;
     notifyListeners();
   }
 
   Future<void> deleteRecording(String path) async {
-    await recordingService.deleteRecording(path);
-    await loadRecordings();
+    try {
+      await recordingService.deleteRecording(path);
+      await loadRecordings();
+    } catch (e) {
+      error = '删除录像失败: $e';
+      notifyListeners();
+    }
   }
 
   // 其他业务方法...

@@ -1,3 +1,7 @@
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:intl/intl.dart';
+
 class RecordingItem {
   final String title;
   final String time;
@@ -9,35 +13,40 @@ class RecordingItem {
 
 /// 封装录像相关底层操作
 class RecordingService {
-  // TODO: 实现获取录像列表、删除、播放等方法
+  // 获取本地录像目录
+  Future<Directory> getRecordingsDirectory() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final recordingsDir = Directory('${dir.path}/recordings');
+    if (!await recordingsDir.exists()) {
+      await recordingsDir.create(recursive: true);
+    }
+    return recordingsDir;
+  }
 
+  // 扫描本地录像文件
   Future<List<RecordingItem>> getRecordings() async {
-    // TODO: 实际应从本地存储读取，这里先用假数据
-    return [
-      RecordingItem(
-        title: '前门',
-        time: '2024-01-20 14:30',
-        thumb: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAjFuh_c7xl4iM1Hkg48-vjmdhdNiYndBkkJcnGVA3ow_iudxjj6jEB28uYs2gv9FPqWD5jTtsUdzTJVDfI4VYNqKW9DvO5I3fTe93pRv2tR39Lgr31nIfRpRWNKlmEmfeL5JPlDhJsPWtRHhAPlmIoZbCxRLZj3wR9Z6LlPUhuOh5RrYDkb50W9in4ihCkujnkQDZPMNJzXZ1TOJBoKnUZo6kAi3j3RPBJvgybyi0epmGK0dgYOWJU0oOvS0HUlVporIc4E96hhlY',
-        path: '/recordings/front_door.mp4',
-      ),
-      RecordingItem(
-        title: '后院',
-        time: '2024-01-20 10:15',
-        thumb: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBczxIKtsEu5XSwr7G-QwhfMUtedX8HSio8MtVMNoer4ThVISk9SWYGfIbIQRZ2SaHcebzJRMMGgTc7fGaLQmgjqlaUpu2WEYDQFN9TAEHB5Fr278Su8lI0wcATjuKxN-o1QLmIl3xkSspxkrR1c1eu2v0c6eypseTGlxpIVZP3mnvXbkIMcB6Hs6u_CO7KdzFTS-WdKfI6TQpN6k2sghiZcUClliK1D8vhF70Go2LK4YX3hK8mjvosiCgdDDW1R2_rLQfB2sS3rRU',
-        path: '/recordings/backyard.mp4',
-      ),
-      RecordingItem(
-        title: '客厅',
-        time: '2024-01-19 22:45',
-        thumb: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCfec09uQSl8RMLK-5ENbUiEMcY5WsAmbJybQ5sYl8CRf8OJYN554bkfZtOHccYlt0Ob1Ggrh-v7sBJ-Qhke1Tzb3XXzqaMN0TQmrLaXc4jeHHn6ZJltK_DlIKHinCd3OnESsW8bESml8fvE_bugzeeQeWsYdO_rdEzZKGwO8MBQopdsQztPGuaV0lxo-uWm2WVo4YRxJ4CPiBi4WwMqJVYaT8oH5_pnIyYCWtQMJ7MdKXT_zAZ6jEIE9BG6mOqAawPxwCEBYJdV-U',
-        path: '/recordings/living_room.mp4',
-      ),
-    ];
+    final dir = await getRecordingsDirectory();
+    final files = dir.listSync().whereType<File>().where((f) => f.path.endsWith('.mp4')).toList();
+    files.sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
+    final dateFormat = DateFormat('yyyy-MM-dd HH:mm');
+    return files.map((file) {
+      final stat = file.statSync();
+      return RecordingItem(
+        title: file.uri.pathSegments.last,
+        time: dateFormat.format(stat.modified),
+        thumb: '', // 可后续生成缩略图
+        path: file.path,
+      );
+    }).toList();
   }
 
+  // 删除指定录像
   Future<void> deleteRecording(String path) async {
-    // TODO: 删除指定录像
+    final file = File(path);
+    if (await file.exists()) {
+      await file.delete();
+    }
   }
 
-  // 其他录像操作...
+  // 预留：保存录像、生成缩略图等
 } 

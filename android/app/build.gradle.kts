@@ -1,3 +1,5 @@
+println("===> My Gradle User Home is: " + gradle.gradleUserHomeDir)
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
