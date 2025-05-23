@@ -3,37 +3,34 @@ description:
 globs: *.dart
 alwaysApply: false
 ---
-# PocketPatrol 下一步开发优先级与建议
+# PocketPatrol 下一步开发优先级与建议（2024Q2 优化版）
 
-## 1. 录像本地存储与回放（高优先级）
-- 实现录像文件的本地保存、读取、删除。
-- 支持录像回放（可用 video_player 插件）。
-- 相关文件：[lib/services/recording_service.dart](mdc:lib/services/recording_service.dart)、[lib/viewmodels/recordings_viewmodel.dart](mdc:lib/viewmodels/recordings_viewmodel.dart)、[lib/screens/recordings_screen.dart](mdc:lib/screens/recordings_screen.dart)
+## 1. WebRTC 推流与远程访问（高优先级）
+- 实现 WebRTCStreamingService，支持高效视频流、音频、NAT 穿透。
+- UI 层支持 WebRTC 推流控制、状态显示、信令与 Tailscale 互通。
+- 相关文件：[lib/services/webrtc_streaming_service.dart](mdc:lib/services/webrtc_streaming_service.dart)（新建）、[lib/viewmodels/live_view_viewmodel.dart](mdc:lib/viewmodels/live_view_viewmodel.dart)、[lib/screens/live_view_screen.dart](mdc:lib/screens/live_view_screen.dart)
 
-## 2. 摄像头推流与远程访问（高优先级）
-- 集成 MJPEG/WebRTC 推流，支持远程访问。
-- UI 层实现推流控制按钮，显示推流状态。
-- 相关文件：[lib/services/camera_service.dart](mdc:lib/services/camera_service.dart)、[lib/viewmodels/live_view_viewmodel.dart](mdc:lib/viewmodels/live_view_viewmodel.dart)、[lib/screens/live_view_screen.dart](mdc:lib/screens/live_view_screen.dart)
-
-## 3. 安全认证与 Token 管理（中优先级）
-- 实现 Token 生成、持久化、校验。
+## 2. 安全认证与 Token 管理（高优先级）
+- 完善 Token 生成、持久化、推流认证（MJPEG/WebRTC均支持）。
 - UI 增加 Token 显示、复制、重置等操作。
 - 相关文件：[lib/services/settings_service.dart](mdc:lib/services/settings_service.dart)、[lib/viewmodels/settings_viewmodel.dart](mdc:lib/viewmodels/settings_viewmodel.dart)、[lib/screens/settings_screen.dart](mdc:lib/screens/settings_screen.dart)
 
-## 4. 设置项扩展与持久化（中优先级）
-- 扩展分辨率、运动检测灵敏度、Tailscale IP 等设置项。
-- 支持设置项的持久化和 UI 响应式。
+## 3. 设置项扩展与持久化（中优先级）
+- 支持分辨率、运动检测灵敏度、Tailscale IP 等更多设置项。
+- 设置项持久化与 UI 响应式。
 - 相关文件：[lib/services/settings_service.dart](mdc:lib/services/settings_service.dart)、[lib/viewmodels/settings_viewmodel.dart](mdc:lib/viewmodels/settings_viewmodel.dart)、[lib/screens/settings_screen.dart](mdc:lib/screens/settings_screen.dart)
 
-## 5. 录像仓库与数据同步（低优先级/扩展）
+## 4. 录像仓库与数据同步（中/低优先级）
 - 预留本地/远程录像数据同步接口，支持云端同步。
 - 相关文件：[lib/repositories/](mdc:lib/repositories)
 
-## 6. 高级特性（低优先级/扩展）
-- 运动检测、云存储、多摄像头支持等。
+## 5. 高级特性与体验优化（低优先级/扩展）
+- 运动检测、云存储、多摄像头支持、推流二维码、推流日志等。
 - 相关文件：按需扩展 Service/ViewModel/Screen 层
 
 ---
 
-> 建议优先完成 1、2 两项，确保核心功能闭环；3、4 为体验和安全提升；5、6 可根据实际需求和资源逐步推进。
+> 目前 MJPEG 推流、本地录像存储/回放等核心功能已完成。建议优先推进 WebRTC 推流与认证体系，提升远程访问体验和安全性；设置项与数据同步可并行完善，高级特性可根据实际需求逐步扩展。
+
+
 
