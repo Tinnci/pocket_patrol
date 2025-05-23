@@ -32,14 +32,16 @@ class LiveViewScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(16),
                   children: [
                     // 摄像头预览
-                    Card(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      clipBehavior: Clip.antiAlias,
-                      child: AspectRatio(
-                        aspectRatio: viewModel.controller!.value.aspectRatio,
-                        child: CameraPreview(viewModel.controller!),
-                      ),
-                    ),
+                    viewModel.controller != null && viewModel.isCameraInitialized
+                      ? Card(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          clipBehavior: Clip.antiAlias,
+                          child: AspectRatio(
+                            aspectRatio: viewModel.controller!.value.aspectRatio,
+                            child: CameraPreview(viewModel.controller!),
+                          ),
+                        )
+                      : Center(child: Text('摄像头未初始化')),
                     const SizedBox(height: 16),
                     // 推流按钮
                     FilledButton(

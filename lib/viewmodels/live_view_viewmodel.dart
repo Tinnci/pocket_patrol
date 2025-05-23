@@ -7,12 +7,14 @@ import '../services/webrtc_streaming_service.dart';
 import '../services/network_service.dart';
 import 'dart:convert';
 import 'package:uuid/uuid.dart';
+import '../services/signaling_service.dart';
 
 /// 负责摄像头预览、初始化、错误处理、推流等业务逻辑
 class LiveViewViewModel extends ChangeNotifier {
   final CameraService cameraService;
   late final StreamingService streamingService;
   late final WebRTCStreamingService webrtcService;
+  late final SignalingService signalingService;
   bool isCameraInitialized = false;
   String? error;
   // MJPEG
@@ -39,14 +41,37 @@ class LiveViewViewModel extends ChangeNotifier {
     webrtcService = WebRTCStreamingService();
     webrtcService.onLocalSdp = (sdp) {
       localSdp = jsonEncode({'sdp': sdp.sdp, 'type': sdp.type});
+      // 自动广播本地 SDP 给所有已连接客户端
+      if (signalingService.server != null) {
+        signalingService.clients.forEach((id, ws) {
+          ws.add(jsonEncode({
+            'type': 'sdp',
+            'role': 'host',
+            'room': roomToken,
+            'data': {'sdp': sdp.sdp, 'type': sdp.type}
+          }));
+        });
+      }
       notifyListeners();
     };
     webrtcService.onLocalIceCandidate = (c) {
-      localIceCandidates.add({
+      final candidate = {
         'candidate': c.candidate,
         'sdpMid': c.sdpMid,
         'sdpMLineIndex': c.sdpMLineIndex,
-      });
+      };
+      localIceCandidates.add(candidate);
+      // 自动广播本地 ICE
+      if (signalingService.server != null) {
+        signalingService.clients.forEach((id, ws) {
+          ws.add(jsonEncode({
+            'type': 'ice',
+            'role': 'host',
+            'room': roomToken,
+            'data': candidate
+          }));
+        });
+      }
       notifyListeners();
     };
     _initNetworkInfo();
@@ -59,7 +84,24 @@ class LiveViewViewModel extends ChangeNotifier {
     qrData = wsUrl != null && roomToken != null
         ? '{"ws":"$wsUrl","room":"$roomToken"}'
         : null;
+    // 初始化 signalingService
+    if (roomToken != null) {
+      signalingService = SignalingService(
+        onMessage: _onSignalMessage,
+        roomToken: roomToken!,
+      );
+    }
     notifyListeners();
+  }
+
+  void _onSignalMessage(String clientId, Map<String, dynamic> msg) async {
+    if (msg['type'] == 'sdp' && msg['role'] == 'viewer') {
+      // 观看端发来 SDP（Answer）
+      await setRemoteSdp(jsonEncode(msg['data']));
+    } else if (msg['type'] == 'ice' && msg['role'] == 'viewer') {
+      // 观看端发来 ICE
+      await addRemoteIceCandidate(jsonEncode(msg['data']));
+    }
   }
 
   CameraController? get controller => cameraService.controller;
@@ -119,6 +161,7 @@ class LiveViewViewModel extends ChangeNotifier {
   Future<void> startWebRTCStreaming() async {
     try {
       await webrtcService.startWebRTCServer();
+      await signalingService.start(port: 9000);
       isWebRTCStreaming = true;
       error = null;
     } catch (e) {
@@ -130,6 +173,7 @@ class LiveViewViewModel extends ChangeNotifier {
 
   Future<void> stopWebRTCStreaming() async {
     await webrtcService.stopWebRTCServer();
+    await signalingService.stop();
     isWebRTCStreaming = false;
     localSdp = null;
     remoteSdp = null;
@@ -170,6 +214,14 @@ class LiveViewViewModel extends ChangeNotifier {
       error = '远端ICE添加失败: $e';
       notifyListeners();
     }
+  }
+
+  @override
+  void dispose() {
+    webrtcService.stopWebRTCServer();
+    streamingService.stopStreamingServer();
+    signalingService.stop();
+    super.dispose();
   }
 
   // 预留：WebRTC 推流接口
