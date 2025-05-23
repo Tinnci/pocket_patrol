@@ -1,19 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../viewmodels/settings_viewmodel.dart';
 
 class SettingsScreen extends StatelessWidget {
-  final ThemeMode themeMode;
-  final bool useLightMode;
-  final void Function(bool) handleBrightnessChange;
-
-  const SettingsScreen({
-    Key? key,
-    required this.themeMode,
-    required this.useLightMode,
-    required this.handleBrightnessChange,
-  }) : super(key: key);
+  const SettingsScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final viewModel = Provider.of<SettingsViewModel>(context);
     final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
@@ -95,8 +89,8 @@ class SettingsScreen extends StatelessWidget {
             child: ListTile(
               title: const Text('浅色模式'),
               trailing: Switch(
-                value: useLightMode,
-                onChanged: handleBrightnessChange,
+                value: viewModel.useLightMode,
+                onChanged: (v) => viewModel.toggleTheme(v),
               ),
             ),
           ),

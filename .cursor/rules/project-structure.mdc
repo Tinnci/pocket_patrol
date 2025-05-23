@@ -3,46 +3,41 @@ description:
 globs: *.dart
 alwaysApply: false
 ---
-# 项目结构与开发规则
+# 项目结构与开发规则（2024Q2 最新）
 
-- 主入口：[lib/main.dart](mdc:lib/main.dart)，加载 PocketPatrolApp。
-- 主界面采用 BottomNavigationBar，分为三大页面：
-  - 实时监控（[live_view_screen.dart](mdc:lib/screens/live_view_screen.dart)）：摄像头实时预览，后续扩展推流/本地流服务。
-  - 录像管理（[recordings_screen.dart](mdc:lib/screens/recordings_screen.dart)）：浏览、回放、管理历史录像。
-  - 设置（[settings_screen.dart](mdc:lib/screens/settings_screen.dart)）：摄像头参数、网络、密钥等配置。
-- 页面组件位于 [lib/screens/](mdc:lib/screens)，每个页面单独 Dart 文件，便于维护。
-- 推荐采用 MVC/MVVM，将界面、业务逻辑、数据模型分离。
-- 全局状态（如主题、Tailscale 状态等）由主入口统一管理，通过参数传递。
+- 主入口：[lib/main.dart](mdc:lib/main.dart)，全局注入 Provider，加载 PocketPatrolApp。
+- 采用 MVVM 架构，分层清晰：
+  - 页面（UI）：[lib/screens/](mdc:lib/screens)，如 [live_view_screen.dart](mdc:lib/screens/live_view_screen.dart)、[recordings_screen.dart](mdc:lib/screens/recordings_screen.dart)、[settings_screen.dart](mdc:lib/screens/settings_screen.dart)
+  - 视图模型（ViewModel）：[lib/viewmodels/](mdc:lib/viewmodels)，如 [live_view_viewmodel.dart](mdc:lib/viewmodels/live_view_viewmodel.dart)、[recordings_viewmodel.dart](mdc:lib/viewmodels/recordings_viewmodel.dart)、[settings_viewmodel.dart](mdc:lib/viewmodels/settings_viewmodel.dart)
+  - 服务（Service）：[lib/services/](mdc:lib/services)，如 [camera_service.dart](mdc:lib/services/camera_service.dart)、[recording_service.dart](mdc:lib/services/recording_service.dart)、[settings_service.dart](mdc:lib/services/settings_service.dart)
+  - 仓库（Repository）：[lib/repositories/](mdc:lib/repositories)，预留数据持久化与远程/本地切换扩展
+- 全局状态管理：使用 Provider（[main.dart](mdc:lib/main.dart)），所有 ViewModel 通过 MultiProvider 注入，UI 响应式。
 - 设计风格参考 Figma/HTML 设计稿，优先保证界面一致性和可用性。
 
 ---
 
-## 项目目标（2024Q2）
+## 已实现功能
 
-1. **利用旧设备（如 Android 手机）作为监控摄像头，采集摄像头流并推流。**
-   - 集成 camera 插件，支持实时摄像头预览。
-   - 研究并实现本地流媒体服务（HTTP/MJPEG/WebRTC），对外暴露摄像头流。
-2. **通过 Tailscale 虚拟内网访问摄像头流。**
-   - 设备安装 Tailscale，加入同一 tailnet，获得虚拟内网 IP。
-   - 其他设备通过 Tailscale IP+端口访问流，实现远程安全访问。
-3. **支持密钥/Token 认证，保障流访问安全。**
-   - 本地流服务支持密钥校验，防止未授权访问。
-4. **设置页面支持流地址、端口、密钥等参数配置。**
-   - 用户可自定义推流端口、密钥，便于灵活部署。
-5. **录像管理与回放。**
-   - 支持本地录像存储、回放，后续可扩展云端存储。
+1. **摄像头实时预览**
+   - CameraService 封装底层操作，LiveViewViewModel 管理状态，LiveViewScreen 只负责 UI。
+2. **录像管理**
+   - RecordingService 支持获取、删除录像（假数据），RecordingsViewModel 管理列表，RecordingsScreen 负责展示与交互。
+3. **设置与主题切换**
+   - SettingsService 支持主题模式持久化，SettingsViewModel 管理切换与读取，SettingsScreen 响应式切换主题。
+4. **全局 Provider 注入**
+   - main.dart 启动时自动加载设置和数据，所有页面响应式。
 
 ---
 
-## 下一步开发计划
+## 后续扩展建议
 
-1. 完善摄像头采集与预览体验，支持多摄像头切换。
-2. 实现本地 HTTP/MJPEG/WebRTC 流服务。
-3. 设置页面增加流服务端口、密钥等配置项。
-4. 集成 Tailscale，测试虚拟内网访问流服务。
-5. 完善录像存储与回放功能。
+- 录像本地存储/回放：完善 RecordingService，接入本地文件系统，支持视频播放。
+- 更多设置项：如分辨率、Token、Tailscale IP 等，均可在 SettingsService/ViewModel 扩展。
+- 安全认证：实现 Token 生成与校验，保护流媒体服务安全。
+- 流媒体服务：Service 层集成 MJPEG/WebRTC 推流。
+- 高级特性：如运动检测、云存储等，均可按当前分层模式平滑扩展。
 
 ---
 
-> 本规则持续迭代，优先保证摄像头流采集、推流、Tailscale 虚拟内网访问等核心目标。
+> 本规则持续迭代，优先保证摄像头流采集、推流、Tailscale 虚拟内网访问、认证、设置、录像等核心目标。
 

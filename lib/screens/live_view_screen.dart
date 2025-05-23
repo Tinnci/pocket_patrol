@@ -1,69 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:camera/camera.dart';
+import '../viewmodels/live_view_viewmodel.dart';
 
-class LiveViewScreen extends StatefulWidget {
+class LiveViewScreen extends StatelessWidget {
   const LiveViewScreen({Key? key}) : super(key: key);
 
   @override
-  State<LiveViewScreen> createState() => _LiveViewScreenState();
-}
-
-class _LiveViewScreenState extends State<LiveViewScreen> with WidgetsBindingObserver {
-  CameraController? _controller;
-  List<CameraDescription>? _cameras;
-  bool _isCameraInitialized = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _initCamera();
-  }
-
-  Future<void> _initCamera() async {
-    try {
-      _cameras = await availableCameras();
-      if (_cameras == null || _cameras!.isEmpty) {
-        setState(() {
-          _error = '未检测到摄像头设备';
-        });
-        return;
-      }
-      _controller = CameraController(_cameras![0], ResolutionPreset.high);
-      await _controller!.initialize();
-      setState(() {
-        _isCameraInitialized = true;
-      });
-    } catch (e) {
-      setState(() {
-        _error = '摄像头初始化失败: $e';
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _controller?.dispose();
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    final CameraController? cameraController = _controller;
-    if (cameraController == null || !cameraController.value.isInitialized) {
-      return;
-    }
-    if (state == AppLifecycleState.inactive) {
-      cameraController.dispose();
-    } else if (state == AppLifecycleState.resumed) {
-      _initCamera();
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final viewModel = Provider.of<LiveViewViewModel>(context);
     final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
@@ -73,10 +18,15 @@ class _LiveViewScreenState extends State<LiveViewScreen> with WidgetsBindingObse
         elevation: 0,
       ),
       backgroundColor: colorScheme.surface,
-      body: _error != null
-          ? Center(child: Text(_error!, style: TextStyle(color: colorScheme.error)))
-          : !_isCameraInitialized
-              ? const Center(child: CircularProgressIndicator())
+      body: viewModel.error != null
+          ? Center(child: Text(viewModel.error!, style: TextStyle(color: colorScheme.error)))
+          : !viewModel.isCameraInitialized
+              ? Center(
+                  child: ElevatedButton(
+                    onPressed: () => viewModel.initializeCamera(),
+                    child: const Text('初始化摄像头'),
+                  ),
+                )
               : ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
@@ -85,8 +35,8 @@ class _LiveViewScreenState extends State<LiveViewScreen> with WidgetsBindingObse
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       clipBehavior: Clip.antiAlias,
                       child: AspectRatio(
-                        aspectRatio: _controller!.value.aspectRatio,
-                        child: CameraPreview(_controller!),
+                        aspectRatio: viewModel.controller!.value.aspectRatio,
+                        child: CameraPreview(viewModel.controller!),
                       ),
                     ),
                     const SizedBox(height: 16),

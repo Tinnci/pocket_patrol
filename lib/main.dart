@@ -1,10 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'screens/live_view_screen.dart';
 import 'screens/recordings_screen.dart';
 import 'screens/settings_screen.dart';
+import 'services/camera_service.dart';
+import 'services/recording_service.dart';
+import 'services/settings_service.dart';
+import 'viewmodels/live_view_viewmodel.dart';
+import 'viewmodels/recordings_viewmodel.dart';
+import 'viewmodels/settings_viewmodel.dart';
 
 void main() {
-  runApp(const PocketPatrolApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => LiveViewViewModel(cameraService: CameraService()),
+        ),
+        ChangeNotifierProvider(
+          create: (_) {
+            final vm = RecordingsViewModel(recordingService: RecordingService());
+            // 自动加载录像列表最佳实践：构造后立即加载
+            vm.loadRecordings();
+            return vm;
+          },
+        ),
+        ChangeNotifierProvider(
+          create: (_) {
+            final vm = SettingsViewModel(settingsService: SettingsService());
+            vm.loadThemeMode();
+            return vm;
+          },
+        ),
+      ],
+      child: const PocketPatrolApp(),
+    ),
+  );
 }
 
 class PocketPatrolApp extends StatefulWidget {
@@ -16,7 +47,6 @@ class PocketPatrolApp extends StatefulWidget {
 
 class _PocketPatrolAppState extends State<PocketPatrolApp> {
   bool _useMaterial3 = true;
-  ThemeMode _themeMode = ThemeMode.system;
   int _selectedIndex = 0;
 
   void _onItemTapped(int index) {
@@ -25,31 +55,20 @@ class _PocketPatrolAppState extends State<PocketPatrolApp> {
     });
   }
 
-  void _handleBrightnessChange(bool useLightMode) {
-    setState(() {
-      _themeMode = useLightMode ? ThemeMode.light : ThemeMode.dark;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    final Brightness platformBrightness = View.of(context).platformDispatcher.platformBrightness;
-    final bool effectivelyLightMode = (_themeMode == ThemeMode.system && platformBrightness == Brightness.light) || _themeMode == ThemeMode.light;
+    final settingsViewModel = Provider.of<SettingsViewModel>(context);
 
     final List<Widget> _screens = [
       LiveViewScreen(),
       RecordingsScreen(),
-      SettingsScreen(
-        themeMode: _themeMode,
-        useLightMode: effectivelyLightMode,
-        handleBrightnessChange: _handleBrightnessChange,
-      ),
+      SettingsScreen(),
     ];
 
     return MaterialApp(
       title: 'PocketPatrol',
       debugShowCheckedModeBanner: false,
-      themeMode: _themeMode,
+      themeMode: settingsViewModel.themeMode,
       theme: ThemeData(
         colorSchemeSeed: Colors.blue,
         useMaterial3: _useMaterial3,
