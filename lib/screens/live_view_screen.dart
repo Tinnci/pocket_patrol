@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:camera/camera.dart';
 import '../viewmodels/live_view_viewmodel.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 class LiveViewScreen extends StatelessWidget {
   const LiveViewScreen({Key? key}) : super(key: key);
@@ -52,6 +53,29 @@ class LiveViewScreen extends StatelessWidget {
                         style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                     ),
+                    // 二维码展示区
+                    if (viewModel.qrData != null) ...[
+                      const SizedBox(height: 16),
+                      Card(
+                        color: colorScheme.surfaceContainerHighest,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              const Text('扫码连接（Tailscale 内网）', style: TextStyle(fontWeight: FontWeight.bold)),
+                              QrImageView(
+                                data: viewModel.qrData!,
+                                size: 180,
+                                backgroundColor: Colors.white,
+                              ),
+                              const SizedBox(height: 8),
+                              SelectableText(viewModel.qrData!, style: TextStyle(fontSize: 12, color: Colors.black54)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                     if (viewModel.isStreaming && viewModel.streamUrl != null) ...[
                       const SizedBox(height: 12),
                       Card(

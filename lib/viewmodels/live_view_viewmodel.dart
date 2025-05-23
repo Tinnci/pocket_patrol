@@ -4,7 +4,9 @@ import '../services/camera_service.dart';
 import '../services/streaming_service.dart';
 import '../services/image_conversion_service.dart';
 import '../services/webrtc_streaming_service.dart';
+import '../services/network_service.dart';
 import 'dart:convert';
+import 'package:uuid/uuid.dart';
 
 /// 负责摄像头预览、初始化、错误处理、推流等业务逻辑
 class LiveViewViewModel extends ChangeNotifier {
@@ -23,6 +25,11 @@ class LiveViewViewModel extends ChangeNotifier {
   String? remoteSdp;
   List<Map<String, dynamic>> localIceCandidates = [];
   List<Map<String, dynamic>> remoteIceCandidates = [];
+  // 网络与二维码
+  String? tailscaleIp;
+  String? wsUrl;
+  String? roomToken;
+  String? qrData;
 
   LiveViewViewModel({required this.cameraService}) {
     streamingService = StreamingService(
@@ -42,6 +49,17 @@ class LiveViewViewModel extends ChangeNotifier {
       });
       notifyListeners();
     };
+    _initNetworkInfo();
+  }
+
+  Future<void> _initNetworkInfo() async {
+    tailscaleIp = await NetworkService.getTailscaleIp();
+    roomToken = const Uuid().v4();
+    wsUrl = tailscaleIp != null ? 'ws://$tailscaleIp:9000' : null;
+    qrData = wsUrl != null && roomToken != null
+        ? '{"ws":"$wsUrl","room":"$roomToken"}'
+        : null;
+    notifyListeners();
   }
 
   CameraController? get controller => cameraService.controller;
