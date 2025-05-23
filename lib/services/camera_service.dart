@@ -4,6 +4,8 @@ import 'package:camera/camera.dart';
 class CameraService {
   CameraController? _controller;
   List<CameraDescription>? _cameras;
+  bool _isStreamingImages = false;
+  void Function(CameraImage)? _onFrame;
 
   CameraController? get controller => _controller;
   List<CameraDescription>? get cameras => _cameras;
@@ -22,6 +24,26 @@ class CameraService {
   Future<void> dispose() async {
     await _controller?.dispose();
     _controller = null;
+  }
+
+  /// 启动图像流，注册帧回调
+  void startImageStream(void Function(CameraImage) onFrame) {
+    if (_controller == null || _isStreamingImages) return;
+    _onFrame = onFrame;
+    _controller!.startImageStream((CameraImage image) {
+      if (_onFrame != null) {
+        _onFrame!(image);
+      }
+    });
+    _isStreamingImages = true;
+  }
+
+  /// 停止图像流
+  void stopImageStream() {
+    if (_controller == null || !_isStreamingImages) return;
+    _controller!.stopImageStream();
+    _isStreamingImages = false;
+    _onFrame = null;
   }
 
   // 其他摄像头操作...

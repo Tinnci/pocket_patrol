@@ -40,15 +40,30 @@ class LiveViewScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    // 连接按钮
+                    // 推流按钮
                     FilledButton(
-                      onPressed: () {},
+                      onPressed: () => viewModel.toggleStreaming(),
                       style: FilledButton.styleFrom(
                         minimumSize: const Size.fromHeight(48),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text('连接', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      child: Text(
+                        viewModel.isStreaming ? '停止推流' : '开始推流',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
                     ),
+                    if (viewModel.isStreaming && viewModel.streamUrl != null) ...[
+                      const SizedBox(height: 12),
+                      Card(
+                        color: colorScheme.surfaceContainerHighest,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: ListTile(
+                          leading: Icon(Icons.link, color: colorScheme.primary),
+                          title: const Text('推流地址'),
+                          subtitle: Text(viewModel.streamUrl!),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 24),
                     // 网络状态
                     Card(
