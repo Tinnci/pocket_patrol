@@ -1,0 +1,29 @@
+name: pocket_patrol
+description: 一个基于 Flutter 的应用，将旧手机变身为远程监控摄像头，支持通过 Tailscale 网络远程访问。仅支持 Windows 和 Android 平台。
+
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.0-0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  url_launcher: ^6.3.1
+  permission_handler: any
+  camera: ^0.11.1
+
+dev_dependencies:
+  # analysis_defaults:
+  #   path: ../analysis_defaults
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

@@ -1,0 +1,48 @@
+---
+description: 
+globs: *.dart
+alwaysApply: false
+---
+# 项目结构说明
+
+- 主入口为 [lib/main.dart](mdc:lib/main.dart)，应用启动后加载 PocketPatrolApp。
+- 主界面采用 BottomNavigationBar，分为三个主要页面：
+  - 实时监控（[live_view_screen.dart](mdc:lib/screens/live_view_screen.dart)）
+  - 录像管理（[recordings_screen.dart](mdc:lib/screens/recordings_screen.dart)）
+  - 设置（[settings_screen.dart](mdc:lib/screens/settings_screen.dart)）
+- 所有页面组件均位于 [lib/screens/](mdc:lib/screens) 目录下，建议每个页面单独一个 Dart 文件，便于维护和扩展。
+- 推荐遵循 Flutter 的 MVC 或 MVVM 结构，将界面（View）、业务逻辑（Controller/Provider）、数据模型（Model）分离。
+- 主题切换、全局状态等由主入口统一管理，通过参数传递给各页面。
+- 设计风格参考 Figma/HTML 设计稿，优先保证界面一致性和可用性。
+
+---
+
+## 项目目标（2024Q2）
+
+1. **利用旧设备（如 Android 手机）作为监控摄像头，采集摄像头流并推流。**
+   - 使用 Flutter [camera](mdc:https:/pub.dev/packages/camera) 插件采集摄像头画面。
+   - 在本机（旧设备）上开启本地流媒体服务器（如 HTTP/MJPEG/WebRTC），对外暴露摄像头流。
+2. **通过 Tailscale 虚拟内网访问摄像头流。**
+   - 设备安装 Tailscale，加入同一 tailnet，获得虚拟内网 IP。
+   - 其他设备通过 Tailscale IP+端口访问摄像头流，实现远程安全访问。
+3. **支持密钥/Token 认证，保障流访问安全。**
+   - 本地流服务需支持密钥校验，防止未授权访问。
+4. **设置页面支持流地址、端口、密钥等参数配置。**
+   - 用户可自定义推流端口、密钥，便于灵活部署。
+5. **录像管理与回放。**
+   - 支持本地录像存储、回放，后续可扩展云端存储。
+
+---
+
+## 下一步开发计划
+
+1. 集成 camera 插件，实现摄像头采集与预览。
+2. 研究并实现本地 HTTP/MJPEG/WebRTC 流服务（可用 Dart shelf 或原生插件）。
+3. 在设置页面增加流服务端口、密钥等配置项。
+4. 集成 Tailscale，测试虚拟内网访问流服务。
+5. 完善录像存储与回放功能。
+
+---
+
+> 本规则将持续迭代，优先保证摄像头流采集、推流、Tailscale 虚拟内网访问等核心目标。
+
