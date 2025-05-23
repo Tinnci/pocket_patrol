@@ -147,6 +147,47 @@ class _LiveViewScreenState extends State<LiveViewScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Row(
+                          children: [
+                            Icon(
+                              viewModel.webrtcConnectionState == 'connected'
+                                  ? Icons.check_circle
+                                  : viewModel.webrtcConnectionState == 'connecting'
+                                      ? Icons.sync
+                                      : viewModel.webrtcConnectionState == 'failed'
+                                          ? Icons.error
+                                          : Icons.radio_button_unchecked,
+                              color: viewModel.webrtcConnectionState == 'connected'
+                                  ? Colors.green
+                                  : viewModel.webrtcConnectionState == 'connecting'
+                                      ? Colors.orange
+                                      : viewModel.webrtcConnectionState == 'failed'
+                                          ? Colors.red
+                                          : Colors.grey,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              viewModel.webrtcConnectionState == 'connected'
+                                  ? 'WebRTC 已连接'
+                                  : viewModel.webrtcConnectionState == 'connecting'
+                                      ? 'WebRTC 连接中...'
+                                      : viewModel.webrtcConnectionState == 'failed'
+                                          ? 'WebRTC 连接失败'
+                                          : 'WebRTC 未连接',
+                              style: TextStyle(
+                                color: viewModel.webrtcConnectionState == 'connected'
+                                    ? Colors.green
+                                    : viewModel.webrtcConnectionState == 'connecting'
+                                        ? Colors.orange
+                                        : viewModel.webrtcConnectionState == 'failed'
+                                            ? Colors.red
+                                            : Colors.grey,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
                         const Text('本地 SDP (Offer)', style: TextStyle(fontWeight: FontWeight.bold)),
                         SelectableText(viewModel.localSdp ?? '生成中...'),
                         const SizedBox(height: 8),

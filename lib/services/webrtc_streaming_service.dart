@@ -8,6 +8,7 @@ class WebRTCStreamingService {
   final List<RTCIceCandidate> _pendingCandidates = [];
   Function(RTCSessionDescription)? onLocalSdp;
   Function(RTCIceCandidate)? onLocalIceCandidate;
+  Function(String)? onConnectionState;
 
   Future<void> startWebRTCServer({bool audio = false, Map<String, dynamic>? config}) async {
     final configuration = config ?? {
@@ -36,6 +37,7 @@ class WebRTCStreamingService {
         };
     _peerConnection!.onConnectionState = (state) {
       print('WebRTC 连接状态: $state');
+      if (onConnectionState != null) onConnectionState!(state.toString().split('.').last);
     };
     RTCSessionDescription offer = await _peerConnection!.createOffer();
     await _peerConnection!.setLocalDescription(offer);

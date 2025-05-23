@@ -1,6 +1,6 @@
 ---
-description:
-globs:
+description: 
+globs: 
 alwaysApply: false
 ---
 # PocketPatrol 下一步开发优先级与建议（2024Q2 优化版）
@@ -50,3 +50,4 @@ alwaysApply: false
 ---
 
 > 优先聚焦"自动化、交互性、用户友好、状态可见"四大方向，逐步完善摄像头、WebRTC、设置、错误提示等核心体验。
+

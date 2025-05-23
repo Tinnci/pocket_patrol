@@ -51,3 +51,26 @@ alwaysApply: false
 
 > 本规则持续迭代，优先保证摄像头流采集、推流、Tailscale 虚拟内网访问、认证、设置、录像等核心目标。
 
+---
+
+## 新特性分层说明
+
+- **设置项交互优化**：
+  - UI：settings_screen.dart
+  - ViewModel：settings_viewmodel.dart
+  - Service：settings_service.dart
+- **WebRTC 状态反馈**：
+  - UI：live_view_screen.dart
+  - ViewModel：live_view_viewmodel.dart
+  - Service：webrtc_streaming_service.dart
+- **录像功能增强**：
+  - UI：live_view_screen.dart, recordings_screen.dart, recording_player_screen.dart
+  - ViewModel：recordings_viewmodel.dart
+  - Service：recording_service.dart
+- **Tailscale 网络状态指引**：
+  - UI：live_view_screen.dart
+  - ViewModel：live_view_viewmodel.dart
+  - Service：network_service.dart
+
+> 所有新特性均遵循 MVVM 分层，UI 只负责展示与交互，业务逻辑在 ViewModel，底层操作在 Service。
+

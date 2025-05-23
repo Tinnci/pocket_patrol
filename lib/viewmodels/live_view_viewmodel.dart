@@ -27,6 +27,8 @@ class LiveViewViewModel extends ChangeNotifier {
   String? remoteSdp;
   List<Map<String, dynamic>> localIceCandidates = [];
   List<Map<String, dynamic>> remoteIceCandidates = [];
+  // WebRTC 连接状态
+  String webrtcConnectionState = 'disconnected'; // connecting/connected/disconnected/failed
   // 网络与二维码
   String? tailscaleIp;
   String? wsUrl;
@@ -163,10 +165,17 @@ class LiveViewViewModel extends ChangeNotifier {
       await webrtcService.startWebRTCServer();
       await signalingService.start(port: 9000);
       isWebRTCStreaming = true;
+      webrtcConnectionState = 'connecting';
       error = null;
+      // 监听连接状态
+      webrtcService.onConnectionState = (state) {
+        webrtcConnectionState = state;
+        notifyListeners();
+      };
     } catch (e) {
       error = 'WebRTC 推流启动失败: $e';
       isWebRTCStreaming = false;
+      webrtcConnectionState = 'failed';
     }
     notifyListeners();
   }
@@ -175,6 +184,7 @@ class LiveViewViewModel extends ChangeNotifier {
     await webrtcService.stopWebRTCServer();
     await signalingService.stop();
     isWebRTCStreaming = false;
+    webrtcConnectionState = 'disconnected';
     localSdp = null;
     remoteSdp = null;
     localIceCandidates.clear();
