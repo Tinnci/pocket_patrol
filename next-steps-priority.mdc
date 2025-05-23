@@ -1,0 +1,52 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# PocketPatrol 下一步开发优先级与建议（2024Q2 优化版）
+
+## 已完成功能
+- 本地录像存储/回放、MJPEG 推流、WebRTC 推流、自动化 WebSocket 信令（多端）、二维码分享、Tailscale IP 自动获取、全局 Provider 状态管理。
+
+## 1. 摄像头自动初始化与权限引导（高优先级）
+- 进入 LiveViewScreen 时自动初始化摄像头，无需手动点击。
+- 初始化时显示加载动画，未授权时弹窗引导用户授权。
+- 初始化失败时，显示具体错误原因和重试按钮。
+- 相关文件：lib/screens/live_view_screen.dart, lib/viewmodels/live_view_viewmodel.dart
+
+## 2. 错误提示与重试机制（高优先级）
+- 所有错误提示应有明确原因、解决建议和一键重试。
+- 错误类型细分（如权限、硬件、网络），并给出操作建议。
+- 相关文件：lib/screens/live_view_screen.dart, lib/screens/settings_screen.dart
+
+## 3. 设置项交互优化（高优先级）
+- 设置项（分辨率、灵敏度等）改为下拉菜单、滑块等交互控件，用户可自定义。
+- 设置变更后自动持久化并即时生效。
+- 增加"恢复默认"按钮。
+- 相关文件：lib/screens/settings_screen.dart, lib/viewmodels/settings_viewmodel.dart, lib/services/settings_service.dart
+
+## 4. WebRTC 连接自动化与状态反馈（高优先级）
+- 观看端扫码后自动完成信令交换，无需手动输入 SDP/ICE。
+- 采集端和观看端 UI 明确展示 WebRTC 连接状态（连接中、已连接、断开、失败等）。
+- 连接失败时给出重试和排查建议。
+- 相关文件：lib/screens/live_view_screen.dart, lib/viewmodels/live_view_viewmodel.dart, lib/services/signaling_service.dart
+
+## 5. 录像功能增强（中优先级）
+- 实时预览界面可直接录制/停止录制。
+- 录像列表显示视频时长、文件大小、缩略图。
+- 支持下拉刷新和删除操作。
+- 相关文件：lib/screens/live_view_screen.dart, lib/screens/recordings_screen.dart, lib/viewmodels/recordings_viewmodel.dart, lib/services/recording_service.dart
+
+## 6. Tailscale/网络状态与指引（中优先级）
+- 明确展示 Tailscale 连接状态，获取失败时有提示和操作指引。
+- 获取 Tailscale IP 失败时，二维码和推流地址不显示，并提示用户操作。
+- 相关文件：lib/screens/live_view_screen.dart, lib/viewmodels/live_view_viewmodel.dart
+
+## 7. 录像列表加载与刷新机制（中优先级）
+- 进入录像页面时再加载列表，支持下拉刷新。
+- 录像删除/新增后自动刷新列表。
+- 相关文件：lib/screens/recordings_screen.dart, lib/viewmodels/recordings_viewmodel.dart
+
+---
+
+> 优先聚焦"自动化、交互性、用户友好、状态可见"四大方向，逐步完善摄像头、WebRTC、设置、错误提示等核心体验。

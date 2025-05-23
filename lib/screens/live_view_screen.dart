@@ -4,8 +4,26 @@ import 'package:camera/camera.dart';
 import '../viewmodels/live_view_viewmodel.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-class LiveViewScreen extends StatelessWidget {
+class LiveViewScreen extends StatefulWidget {
   const LiveViewScreen({Key? key}) : super(key: key);
+
+  @override
+  State<LiveViewScreen> createState() => _LiveViewScreenState();
+}
+
+class _LiveViewScreenState extends State<LiveViewScreen> {
+  bool _triedInit = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 自动初始化摄像头（只执行一次）
+    if (!_triedInit) {
+      final viewModel = Provider.of<LiveViewViewModel>(context, listen: false);
+      viewModel.initializeCamera();
+      _triedInit = true;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,158 +37,175 @@ class LiveViewScreen extends StatelessWidget {
         elevation: 0,
       ),
       backgroundColor: colorScheme.surface,
-      body: viewModel.error != null
-          ? Center(child: Text(viewModel.error!, style: TextStyle(color: colorScheme.error)))
-          : !viewModel.isCameraInitialized
-              ? Center(
-                  child: ElevatedButton(
+      body: Builder(
+        builder: (context) {
+          if (viewModel.error != null) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.error, color: colorScheme.error, size: 48),
+                  const SizedBox(height: 12),
+                  Text(viewModel.error!, style: TextStyle(color: colorScheme.error)),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
                     onPressed: () => viewModel.initializeCamera(),
-                    child: const Text('初始化摄像头'),
+                    child: const Text('重试'),
                   ),
-                )
-              : ListView(
-                  padding: const EdgeInsets.all(16),
+                  const SizedBox(height: 8),
+                  Text('请检查摄像头权限或硬件连接', style: TextStyle(color: colorScheme.onSurfaceVariant)),
+                ],
+              ),
+            );
+          }
+          if (!viewModel.isCameraInitialized) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              // 摄像头预览
+              viewModel.controller != null && viewModel.isCameraInitialized
+                ? Card(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    clipBehavior: Clip.antiAlias,
+                    child: AspectRatio(
+                      aspectRatio: viewModel.controller!.value.aspectRatio,
+                      child: CameraPreview(viewModel.controller!),
+                    ),
+                  )
+                : Center(child: Text('摄像头未初始化')),
+              const SizedBox(height: 16),
+              // 推流按钮
+              FilledButton(
+                onPressed: () => viewModel.toggleStreaming(),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text(
+                  viewModel.isStreaming ? '停止推流' : '开始推流',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+              // 二维码展示区
+              if (viewModel.qrData != null) ...[
+                const SizedBox(height: 16),
+                Card(
+                  color: colorScheme.surfaceContainerHighest,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        const Text('扫码连接（Tailscale 内网）', style: TextStyle(fontWeight: FontWeight.bold)),
+                        QrImageView(
+                          data: viewModel.qrData!,
+                          size: 180,
+                          backgroundColor: Colors.white,
+                        ),
+                        const SizedBox(height: 8),
+                        SelectableText(viewModel.qrData!, style: TextStyle(fontSize: 12, color: Colors.black54)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              if (viewModel.isStreaming && viewModel.streamUrl != null) ...[
+                const SizedBox(height: 12),
+                Card(
+                  color: colorScheme.surfaceContainerHighest,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: ListTile(
+                    leading: Icon(Icons.link, color: colorScheme.primary),
+                    title: const Text('推流地址'),
+                    subtitle: Text(viewModel.streamUrl!),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              // WebRTC 推流按钮
+              FilledButton(
+                onPressed: () => viewModel.toggleWebRTCStreaming(),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  backgroundColor: colorScheme.secondary,
+                ),
+                child: Text(
+                  viewModel.isWebRTCStreaming ? '停止 WebRTC 推流' : '开始 WebRTC 推流',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+              if (viewModel.isWebRTCStreaming) ...[
+                const SizedBox(height: 12),
+                Card(
+                  color: colorScheme.surfaceContainerHighest,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('本地 SDP (Offer)', style: TextStyle(fontWeight: FontWeight.bold)),
+                        SelectableText(viewModel.localSdp ?? '生成中...'),
+                        const SizedBox(height: 8),
+                        const Text('本地 ICE Candidates'),
+                        ...viewModel.localIceCandidates.map((c) => SelectableText(c.toString())).toList(),
+                        const Divider(),
+                        const Text('远端 SDP (Answer) 输入'),
+                        _RemoteSdpInput(viewModel: viewModel),
+                        const SizedBox(height: 8),
+                        const Text('远端 ICE Candidate 输入'),
+                        _RemoteIceInput(viewModel: viewModel),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 24),
+              // 网络状态
+              Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                color: colorScheme.surfaceContainerHighest,
+                child: ListTile(
+                  leading: Icon(Icons.wifi, color: colorScheme.primary),
+                  title: const Text('Tailscale', style: TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: const Text('已连接'),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // 设置项
+              Text('设置', style: TextStyle(color: colorScheme.onSurface, fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Column(
                   children: [
-                    // 摄像头预览
-                    viewModel.controller != null && viewModel.isCameraInitialized
-                      ? Card(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          clipBehavior: Clip.antiAlias,
-                          child: AspectRatio(
-                            aspectRatio: viewModel.controller!.value.aspectRatio,
-                            child: CameraPreview(viewModel.controller!),
-                          ),
-                        )
-                      : Center(child: Text('摄像头未初始化')),
-                    const SizedBox(height: 16),
-                    // 推流按钮
-                    FilledButton(
-                      onPressed: () => viewModel.toggleStreaming(),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: Text(
-                        viewModel.isStreaming ? '停止推流' : '开始推流',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
+                    ListTile(
+                      leading: Icon(Icons.videocam, color: colorScheme.primary),
+                      title: const Text('摄像头分辨率'),
+                      trailing: const Text('1080p'),
                     ),
-                    // 二维码展示区
-                    if (viewModel.qrData != null) ...[
-                      const SizedBox(height: 16),
-                      Card(
-                        color: colorScheme.surfaceContainerHighest,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            children: [
-                              const Text('扫码连接（Tailscale 内网）', style: TextStyle(fontWeight: FontWeight.bold)),
-                              QrImageView(
-                                data: viewModel.qrData!,
-                                size: 180,
-                                backgroundColor: Colors.white,
-                              ),
-                              const SizedBox(height: 8),
-                              SelectableText(viewModel.qrData!, style: TextStyle(fontSize: 12, color: Colors.black54)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                    if (viewModel.isStreaming && viewModel.streamUrl != null) ...[
-                      const SizedBox(height: 12),
-                      Card(
-                        color: colorScheme.surfaceContainerHighest,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        child: ListTile(
-                          leading: Icon(Icons.link, color: colorScheme.primary),
-                          title: const Text('推流地址'),
-                          subtitle: Text(viewModel.streamUrl!),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 16),
-                    // WebRTC 推流按钮
-                    FilledButton(
-                      onPressed: () => viewModel.toggleWebRTCStreaming(),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        backgroundColor: colorScheme.secondary,
-                      ),
-                      child: Text(
-                        viewModel.isWebRTCStreaming ? '停止 WebRTC 推流' : '开始 WebRTC 推流',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: Icon(Icons.sensors, color: colorScheme.primary),
+                      title: const Text('运动检测灵敏度'),
+                      trailing: const Text('中'),
                     ),
-                    if (viewModel.isWebRTCStreaming) ...[
-                      const SizedBox(height: 12),
-                      Card(
-                        color: colorScheme.surfaceContainerHighest,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('本地 SDP (Offer)', style: TextStyle(fontWeight: FontWeight.bold)),
-                              SelectableText(viewModel.localSdp ?? '生成中...'),
-                              const SizedBox(height: 8),
-                              const Text('本地 ICE Candidates'),
-                              ...viewModel.localIceCandidates.map((c) => SelectableText(c.toString())).toList(),
-                              const Divider(),
-                              const Text('远端 SDP (Answer) 输入'),
-                              _RemoteSdpInput(viewModel: viewModel),
-                              const SizedBox(height: 8),
-                              const Text('远端 ICE Candidate 输入'),
-                              _RemoteIceInput(viewModel: viewModel),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 24),
-                    // 网络状态
-                    Card(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      color: colorScheme.surfaceContainerHighest,
-                      child: ListTile(
-                        leading: Icon(Icons.wifi, color: colorScheme.primary),
-                        title: const Text('Tailscale', style: TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: const Text('已连接'),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // 设置项
-                    Text('设置', style: TextStyle(color: colorScheme.onSurface, fontSize: 16, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    Card(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: Column(
-                        children: [
-                          ListTile(
-                            leading: Icon(Icons.videocam, color: colorScheme.primary),
-                            title: const Text('摄像头分辨率'),
-                            trailing: const Text('1080p'),
-                          ),
-                          const Divider(height: 1),
-                          ListTile(
-                            leading: Icon(Icons.sensors, color: colorScheme.primary),
-                            title: const Text('运动检测灵敏度'),
-                            trailing: const Text('中'),
-                          ),
-                          const Divider(height: 1),
-                          ListTile(
-                            leading: Icon(Icons.public, color: colorScheme.primary),
-                            title: const Text('远程访问'),
-                            trailing: const Text('已启用'),
-                          ),
-                        ],
-                      ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: Icon(Icons.public, color: colorScheme.primary),
+                      title: const Text('远程访问'),
+                      trailing: const Text('已启用'),
                     ),
                   ],
                 ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

@@ -27,14 +27,32 @@ class SettingsScreen extends StatelessWidget {
               children: [
                 ListTile(
                   title: const Text('分辨率'),
-                  subtitle: const Text('1280 x 720'),
-                  trailing: Text('720p', style: TextStyle(color: colorScheme.primary)),
+                  subtitle: const Text('选择摄像头分辨率'),
+                  trailing: DropdownButton<String>(
+                    value: viewModel.resolution,
+                    items: [
+                      DropdownMenuItem(value: '720p', child: Text('720p')),
+                      DropdownMenuItem(value: '1080p', child: Text('1080p')),
+                      DropdownMenuItem(value: '4K', child: Text('4K')),
+                    ],
+                    onChanged: (v) => viewModel.setResolution(v!),
+                  ),
                 ),
                 const Divider(height: 1),
                 ListTile(
-                  title: const Text('运动检测'),
-                  subtitle: const Text('中'),
-                  trailing: Text('中', style: TextStyle(color: colorScheme.primary)),
+                  title: const Text('运动检测灵敏度'),
+                  subtitle: const Text('调节运动检测灵敏度'),
+                  trailing: SizedBox(
+                    width: 120,
+                    child: Slider(
+                      value: viewModel.motionSensitivity,
+                      min: 0,
+                      max: 2,
+                      divisions: 2,
+                      label: viewModel.motionSensitivityLabel,
+                      onChanged: (v) => viewModel.setMotionSensitivity(v),
+                    ),
+                  ),
                 ),
                 const Divider(height: 1),
                 ListTile(
