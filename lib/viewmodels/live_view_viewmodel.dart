@@ -3,22 +3,45 @@ import 'package:camera/camera.dart';
 import '../services/camera_service.dart';
 import '../services/streaming_service.dart';
 import '../services/image_conversion_service.dart';
+import '../services/webrtc_streaming_service.dart';
+import 'dart:convert';
 
 /// 负责摄像头预览、初始化、错误处理、推流等业务逻辑
 class LiveViewViewModel extends ChangeNotifier {
   final CameraService cameraService;
   late final StreamingService streamingService;
+  late final WebRTCStreamingService webrtcService;
   bool isCameraInitialized = false;
   String? error;
+  // MJPEG
   bool isStreaming = false;
   int? streamingPort;
   String? streamUrl;
+  // WebRTC
+  bool isWebRTCStreaming = false;
+  String? localSdp;
+  String? remoteSdp;
+  List<Map<String, dynamic>> localIceCandidates = [];
+  List<Map<String, dynamic>> remoteIceCandidates = [];
 
   LiveViewViewModel({required this.cameraService}) {
     streamingService = StreamingService(
       cameraService: cameraService,
       imageConversionService: ImageConversionService(),
     );
+    webrtcService = WebRTCStreamingService();
+    webrtcService.onLocalSdp = (sdp) {
+      localSdp = jsonEncode({'sdp': sdp.sdp, 'type': sdp.type});
+      notifyListeners();
+    };
+    webrtcService.onLocalIceCandidate = (c) {
+      localIceCandidates.add({
+        'candidate': c.candidate,
+        'sdpMid': c.sdpMid,
+        'sdpMLineIndex': c.sdpMLineIndex,
+      });
+      notifyListeners();
+    };
   }
 
   CameraController? get controller => cameraService.controller;
@@ -71,6 +94,63 @@ class LiveViewViewModel extends ChangeNotifier {
       await stopStreaming();
     } else {
       await startStreaming();
+    }
+  }
+
+  // WebRTC 推流控制
+  Future<void> startWebRTCStreaming() async {
+    try {
+      await webrtcService.startWebRTCServer();
+      isWebRTCStreaming = true;
+      error = null;
+    } catch (e) {
+      error = 'WebRTC 推流启动失败: $e';
+      isWebRTCStreaming = false;
+    }
+    notifyListeners();
+  }
+
+  Future<void> stopWebRTCStreaming() async {
+    await webrtcService.stopWebRTCServer();
+    isWebRTCStreaming = false;
+    localSdp = null;
+    remoteSdp = null;
+    localIceCandidates.clear();
+    remoteIceCandidates.clear();
+    notifyListeners();
+  }
+
+  Future<void> toggleWebRTCStreaming() async {
+    if (isWebRTCStreaming) {
+      await stopWebRTCStreaming();
+    } else {
+      await startWebRTCStreaming();
+    }
+  }
+
+  // 信令：设置远端 SDP
+  Future<void> setRemoteSdp(String sdpJson) async {
+    try {
+      final map = jsonDecode(sdpJson);
+      await webrtcService.handleRemoteSdp(map['sdp'], map['type']);
+      remoteSdp = sdpJson;
+      notifyListeners();
+    } catch (e) {
+      error = '远端SDP设置失败: $e';
+      notifyListeners();
+    }
+  }
+
+  // 信令：添加远端 ICE
+  Future<void> addRemoteIceCandidate(String candidateJson) async {
+    try {
+      final map = jsonDecode(candidateJson);
+      await webrtcService.handleRemoteIceCandidate(map);
+      remoteIceCandidates.add(map);
+      notifyListeners();
+    } catch (e) {
+      error = '远端ICE添加失败: $e';
+      notifyListeners();
     }
   }
 

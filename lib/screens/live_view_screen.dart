@@ -64,6 +64,46 @@ class LiveViewScreen extends StatelessWidget {
                         ),
                       ),
                     ],
+                    const SizedBox(height: 16),
+                    // WebRTC 推流按钮
+                    FilledButton(
+                      onPressed: () => viewModel.toggleWebRTCStreaming(),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        backgroundColor: colorScheme.secondary,
+                      ),
+                      child: Text(
+                        viewModel.isWebRTCStreaming ? '停止 WebRTC 推流' : '开始 WebRTC 推流',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    if (viewModel.isWebRTCStreaming) ...[
+                      const SizedBox(height: 12),
+                      Card(
+                        color: colorScheme.surfaceContainerHighest,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('本地 SDP (Offer)', style: TextStyle(fontWeight: FontWeight.bold)),
+                              SelectableText(viewModel.localSdp ?? '生成中...'),
+                              const SizedBox(height: 8),
+                              const Text('本地 ICE Candidates'),
+                              ...viewModel.localIceCandidates.map((c) => SelectableText(c.toString())).toList(),
+                              const Divider(),
+                              const Text('远端 SDP (Answer) 输入'),
+                              _RemoteSdpInput(viewModel: viewModel),
+                              const SizedBox(height: 8),
+                              const Text('远端 ICE Candidate 输入'),
+                              _RemoteIceInput(viewModel: viewModel),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 24),
                     // 网络状态
                     Card(
@@ -105,6 +145,71 @@ class LiveViewScreen extends StatelessWidget {
                     ),
                   ],
                 ),
+    );
+  }
+}
+
+// 组件：远端SDP输入
+class _RemoteSdpInput extends StatefulWidget {
+  final dynamic viewModel;
+  const _RemoteSdpInput({required this.viewModel});
+  @override
+  State<_RemoteSdpInput> createState() => _RemoteSdpInputState();
+}
+class _RemoteSdpInputState extends State<_RemoteSdpInput> {
+  final _controller = TextEditingController();
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _controller,
+            decoration: const InputDecoration(hintText: '粘贴远端SDP JSON'),
+            minLines: 1,
+            maxLines: 3,
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.send),
+          onPressed: () async {
+            await widget.viewModel.setRemoteSdp(_controller.text);
+            _controller.clear();
+          },
+        ),
+      ],
+    );
+  }
+}
+// 组件：远端ICE输入
+class _RemoteIceInput extends StatefulWidget {
+  final dynamic viewModel;
+  const _RemoteIceInput({required this.viewModel});
+  @override
+  State<_RemoteIceInput> createState() => _RemoteIceInputState();
+}
+class _RemoteIceInputState extends State<_RemoteIceInput> {
+  final _controller = TextEditingController();
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _controller,
+            decoration: const InputDecoration(hintText: '粘贴远端ICE JSON'),
+            minLines: 1,
+            maxLines: 2,
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.send),
+          onPressed: () async {
+            await widget.viewModel.addRemoteIceCandidate(_controller.text);
+            _controller.clear();
+          },
+        ),
+      ],
     );
   }
 } 
