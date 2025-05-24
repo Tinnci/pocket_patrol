@@ -15,29 +15,33 @@ class LiveViewScreen extends StatefulWidget {
 class _LiveViewScreenState extends State<LiveViewScreen> {
   bool _triedInit = false;
   String? _lastSnackPath; // 防止重复弹出
+  late LiveViewViewModel _viewModel; // 新增：存储 ViewModel 引用
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // 自动初始化摄像头（只执行一次）
+    // 获取 ViewModel 引用并存储
+    _viewModel = Provider.of<LiveViewViewModel>(context, listen: false);
+
     if (!_triedInit) {
-      final viewModel = Provider.of<LiveViewViewModel>(context, listen: false);
-      viewModel.initializeCamera();
-      viewModel.addListener(_handleRecordingFinished);
+      _viewModel.initializeCamera();
+      // 使用存储的引用添加监听
+      _viewModel.addListener(_handleRecordingFinished);
       _triedInit = true;
     }
   }
 
   @override
   void dispose() {
-    Provider.of<LiveViewViewModel>(context, listen: false).removeListener(_handleRecordingFinished);
+     // 使用存储的引用移除监听
+     _viewModel.removeListener(_handleRecordingFinished);
     super.dispose();
   }
 
   void _handleRecordingFinished() {
-    final viewModel = Provider.of<LiveViewViewModel>(context, listen: false);
-    if (!viewModel.isRecording && viewModel.lastRecordedPath != null && viewModel.lastRecordedPath != _lastSnackPath) {
-      _lastSnackPath = viewModel.lastRecordedPath;
+    // 直接使用存储的 ViewModel 引用
+    if (!_viewModel.isRecording && _viewModel.lastRecordedPath != null && _viewModel.lastRecordedPath != _lastSnackPath) {
+      _lastSnackPath = _viewModel.lastRecordedPath;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('录像已保存'),
@@ -47,7 +51,7 @@ class _LiveViewScreenState extends State<LiveViewScreen> {
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => RecordingPlayerScreen(
-                    videoPath: viewModel.lastRecordedPath!,
+                    videoPath: _viewModel.lastRecordedPath!,
                     title: '最新录像',
                   ),
                 ),
@@ -319,7 +323,8 @@ class _LiveViewScreenState extends State<LiveViewScreen> {
                 child: ListTile(
                   leading: Icon(Icons.wifi, color: colorScheme.primary),
                   title: const Text('Tailscale', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: const Text('已连接'),
+                  subtitle: Text(viewModel.tailscaleIp != null ? viewModel.tailscaleIp! : (viewModel.tailscaleStatus == 'connecting' ? '连接中...' : '未连接'),
+                  style: TextStyle(color: viewModel.tailscaleStatus == 'connected' ? Colors.green : Colors.grey)),
                 ),
               ),
               const SizedBox(height: 16),
