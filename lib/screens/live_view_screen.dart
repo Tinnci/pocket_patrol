@@ -34,8 +34,10 @@ class _LiveViewScreenState extends State<LiveViewScreen> {
 
   @override
   void dispose() {
-     // 使用存储的引用移除监听
+     // 移除 ViewModel 监听
      _viewModel.removeListener(_handleRecordingFinished);
+     // IMPORTANT: Stop camera preview and streams when screen is disposed
+     _viewModel.stopCameraPreviewAndStreams(); // Call the new method
     super.dispose();
   }
 

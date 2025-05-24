@@ -334,7 +334,7 @@ class LiveViewViewModel extends ChangeNotifier {
     signalingService?.stop();
     // 停止录像，避免资源泄露 (dispose 可能在录像结束前调用)
     if (isRecording) {
-      cameraService.stopRecording(); // 注意：这个停止可能是异步的，dispose 中直接 await 可能有问题，这里先这样处理
+      cameraService.stopRecording();
     }
     currentMode = CameraMode.previewOnly; // ViewModel 销毁，回到预览模式
     cameraService.dispose(); // 释放 CameraController 资源
@@ -390,5 +390,20 @@ class LiveViewViewModel extends ChangeNotifier {
       _lastRecordedPath = null;
     }
     notifyListeners();
+  }
+
+  /// 新增方法：停止摄像头预览和图像流
+  /// 在 LiveViewScreen 销毁时调用
+  void stopCameraPreviewAndStreams() {
+    // 停止图像流 (如果正在进行 MJPEG 推流，它会停止)
+    cameraService.stopImageStream();
+    // 释放 CameraController 资源 (如果不是 WebRTC 模式)
+    // WebRTC 模式下 CameraService.dispose() 已在 startWebRTCStreaming 中调用
+    if (currentMode != CameraMode.webrtcStreaming) {
+       cameraService.dispose();
+       isCameraInitialized = false;
+    }
+     currentMode = CameraMode.previewOnly; // 回到预览模式 (即使预览已停止)
+     notifyListeners(); // Notify UI changes
   }
 } 
