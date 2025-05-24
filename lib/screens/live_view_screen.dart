@@ -77,6 +77,16 @@ class _LiveViewScreenState extends State<LiveViewScreen> {
         centerTitle: true,
         backgroundColor: colorScheme.surface,
         elevation: 0,
+        actions: [
+          if (viewModel.availableCameras.length > 1)
+            IconButton(
+              icon: const Icon(Icons.flip_camera_ios),
+              onPressed: viewModel.isBusy
+                  ? null
+                  : () => viewModel.cycleSwitchCamera(),
+              tooltip: viewModel.cameraSwitchTooltip,
+            ),
+        ],
       ),
       backgroundColor: colorScheme.surface,
       body: Builder(
@@ -342,19 +352,18 @@ class _LiveViewScreenState extends State<LiveViewScreen> {
                     ListTile(
                       leading: Icon(Icons.videocam, color: colorScheme.primary),
                       title: const Text('摄像头分辨率'),
-                      trailing: Text(settingsViewModel.resolution), // Bind to SettingsViewModel
+                      trailing: Text(settingsViewModel.resolution),
                     ),
                     const Divider(height: 1),
                     ListTile(
                       leading: Icon(Icons.sensors, color: colorScheme.primary),
                       title: const Text('运动检测灵敏度'),
-                      trailing: Text(settingsViewModel.motionSensitivityLabel), // Bind to SettingsViewModel
+                      trailing: Text(settingsViewModel.motionSensitivityLabel),
                     ),
                     const Divider(height: 1),
                     ListTile(
                       leading: Icon(Icons.public, color: colorScheme.primary),
                       title: const Text('远程访问'),
-                      // Display Tailscale status from LiveViewViewModel for actual remote access status
                       trailing: Text(
                         viewModel.tailscaleStatus == 'connected'
                             ? '已启用'

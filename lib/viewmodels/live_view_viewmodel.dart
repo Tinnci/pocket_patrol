@@ -8,6 +8,7 @@ import '../services/network_service.dart';
 import 'dart:convert';
 import 'package:uuid/uuid.dart';
 import '../services/signaling_service.dart';
+import 'settings_viewmodel.dart'; // Import SettingsViewModel
 
 /// Represents the current operating mode of the camera.
 enum CameraMode {
@@ -56,13 +57,22 @@ class LiveViewViewModel extends ChangeNotifier {
   // 是否忙碌 (推流或录像)
   bool get isBusy => isStreaming || isWebRTCStreaming || isRecording;
 
-  LiveViewViewModel({required this.cameraService}) {
+  // 新增: 摄像头列表和当前选中摄像头
+  List<CameraDescription> get availableCameras => cameraService.cameras ?? [];
+  CameraDescription? get currentCamera => cameraService.selectedCameraDescription;
+  int _selectedCameraIndex = 0;
+
+  final SettingsViewModel settingsViewModel; // Add dependency on SettingsViewModel
+
+  LiveViewViewModel({required this.cameraService, required this.settingsViewModel}) {
     streamingService = StreamingService(
       cameraService: cameraService,
       imageConversionService: ImageConversionService(),
     );
     webrtcService = WebRTCStreamingService();
     _initNetworkInfo();
+    // Listen to SettingsViewModel changes
+    settingsViewModel.addListener(_onSettingsChanged);
   }
 
   Future<void> _initNetworkInfo() async {
@@ -156,9 +166,10 @@ class LiveViewViewModel extends ChangeNotifier {
 
   CameraController? get controller => cameraService.controller;
 
-  Future<void> initializeCamera() async {
+  Future<void> initializeCamera({CameraDescription? cameraDescription}) async {
     try {
-      await cameraService.initialize();
+      // initialize 方法现在会使用 CameraService 中存储的 _currentGlobalPreset
+      await cameraService.initialize(cameraDescription: cameraDescription);
       isCameraInitialized = true;
       error = null;
     } catch (e) {
@@ -329,6 +340,8 @@ class LiveViewViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
+    // Remove listener
+    settingsViewModel.removeListener(_onSettingsChanged);
     webrtcService.stopWebRTCServer();
     streamingService.stopStreamingServer();
     signalingService?.stop();
@@ -405,5 +418,76 @@ class LiveViewViewModel extends ChangeNotifier {
     }
      currentMode = CameraMode.previewOnly; // 回到预览模式 (即使预览已停止)
      notifyListeners(); // Notify UI changes
+  }
+
+  Future<void> cycleSwitchCamera() async {
+    if (availableCameras.isEmpty || isBusy) { // Also check isBusy
+      // Optionally show a message that camera is busy
+      return;
+    }
+
+    // Find the index of the currently selected camera
+    final currentIndex = availableCameras.indexOf(cameraService.selectedCameraDescription!);
+    _selectedCameraIndex = (currentIndex + 1) % availableCameras.length;
+    final newCamera = availableCameras[_selectedCameraIndex];
+
+    try {
+      isCameraInitialized = false; // 切换前标记为未初始化，显示加载指示
+      notifyListeners();
+
+      // initializeCamera 会自动使用 CameraService 中最新的 _currentGlobalPreset
+      await initializeCamera(cameraDescription: newCamera);
+      isCameraInitialized = true;
+      error = null;
+    } catch (e) {
+      error = '切换摄像头失败: $e';
+      // 尝试恢复到上一个摄像头（如果切换失败）
+      // 注意：这里的恢复逻辑可以更健壮，例如尝试默认摄像头
+      // 为了简单，这里尝试恢复到切换前的摄像头
+       if (availableCameras.isNotEmpty) {
+           final previousIndex = (currentIndex + availableCameras.length) % availableCameras.length; // Index before trying to switch
+           await initializeCamera(cameraDescription: availableCameras[previousIndex]);
+       }
+      isCameraInitialized = true; // 假设恢复成功
+    }
+    notifyListeners();
+  }
+
+  // Helper method to convert string resolution to ResolutionPreset
+  ResolutionPreset _getResolutionPresetFromString(String resolutionStr) {
+    switch (resolutionStr) {
+      case '720p': return ResolutionPreset.medium;
+      case '1080p': return ResolutionPreset.high;
+      case '4K': return ResolutionPreset.max;
+      default: return ResolutionPreset.medium;
+    }
+  }
+
+  // New getter for the camera switch button tooltip
+  String get cameraSwitchTooltip {
+    if (availableCameras.length < 2) {
+      return '无其他可用摄像头';
+    }
+    if (currentCamera?.lensDirection == CameraLensDirection.front) {
+      return '切换到后置摄像头';
+    } else if (currentCamera?.lensDirection == CameraLensDirection.back) {
+      return '切换到前置摄像头';
+    }
+    return '切换摄像头';
+  }
+
+  // Listener for SettingsViewModel changes
+  void _onSettingsChanged() {
+    print('LiveViewViewModel: Settings changed');
+    // 当设置变化时，特别是分辨率变化时，如果摄像头当前是活动的且不忙碌，则尝试重新初始化
+    // CameraService.updateGlobalResolutionPreset 已在 SettingsViewModel 中调用
+    if (isCameraInitialized && cameraService.controller != null && !isBusy) {
+        print('Settings changed, re-initializing camera with new resolution.');
+        // 简单的重新初始化当前摄像头
+        // 注意：这会中断预览，需要用户体验上的考量
+        initializeCamera(cameraDescription: cameraService.selectedCameraDescription); // 直接使用 cameraService.selectedCameraDescription
+    }
+    // Notify listeners to potentially update UI based on new settings (like resolution text)
+    notifyListeners();
   }
 } 

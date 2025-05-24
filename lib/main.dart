@@ -17,20 +17,9 @@ void main() {
   runApp(
     MultiProvider(
       providers: [
+        // 先创建 SettingsViewModel
         ChangeNotifierProvider(
-          // Provide the shared CameraService instance
-          create: (_) => LiveViewViewModel(cameraService: cameraService),
-        ),
-        ChangeNotifierProvider(
-          create: (_) {
-            final vm = RecordingsViewModel(recordingService: RecordingService());
-            // 自动加载录像列表最佳实践：构造后立即加载
-            vm.loadRecordings();
-            return vm;
-          },
-        ),
-        ChangeNotifierProvider(
-          create: (_) {
+          create: (context) { // Use context here to access other providers
             final vm = SettingsViewModel(
               settingsService: SettingsService(),
               cameraService: cameraService, // Provide the shared CameraService instance
@@ -38,6 +27,22 @@ void main() {
             );
             // 在 ViewModel 创建时加载所有设置
             vm.loadSettings();
+            return vm;
+          },
+        ),
+        // 再创建 LiveViewViewModel，此时可以访问 SettingsViewModel
+        ChangeNotifierProvider(
+          // Provide the shared CameraService instance
+          create: (context) => LiveViewViewModel(
+            cameraService: cameraService,
+            settingsViewModel: Provider.of<SettingsViewModel>(context, listen: false), // Get SettingsViewModel
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (_) {
+            final vm = RecordingsViewModel(recordingService: RecordingService());
+            // 自动加载录像列表最佳实践：构造后立即加载
+            vm.loadRecordings();
             return vm;
           },
         ),

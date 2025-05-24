@@ -14,19 +14,33 @@ class CameraService {
   CameraController? get controller => _controller;
   List<CameraDescription>? get cameras => _cameras;
   String? get recordingPath => _recordingPath;
+  CameraDescription? _selectedCameraDescription;
+  CameraDescription? get selectedCameraDescription => _selectedCameraDescription;
+
+  // 新增：存储当前实际使用的 preset，并提供更新方法
+  ResolutionPreset _currentGlobalPreset = ResolutionPreset.high;
+  void updateGlobalResolutionPreset(ResolutionPreset preset) {
+    _currentGlobalPreset = preset;
+    print('CameraService: Global resolution preset updated to $preset');
+  }
 
   /// 初始化摄像头
-  Future<void> initialize({ResolutionPreset preset = ResolutionPreset.high}) async {
+  Future<void> initialize({CameraDescription? cameraDescription}) async {
     // 先释放旧的控制器
     await _controller?.dispose();
     _controller = null;
 
-    _cameras = await availableCameras();
+    _cameras ??= await availableCameras();
     if (_cameras == null || _cameras!.isEmpty) {
       throw Exception('未检测到摄像头设备');
     }
-    // TODO: 根据 preset 选择合适的分辨率
-    _controller = CameraController(_cameras![0], preset);
+
+    _selectedCameraDescription = cameraDescription ?? _cameras![0];
+
+    _controller = CameraController(
+      _selectedCameraDescription!,
+      _currentGlobalPreset,
+    );
     await _controller!.initialize();
   }
 
@@ -127,5 +141,16 @@ class CameraService {
     // Example: if (_controller != null) { _controller!.setFlashMode(enabled ? FlashMode.torch : FlashMode.off); }
   }
 
+  /// 新增切换摄像头的方法
+  Future<void> switchCamera(CameraDescription newCameraDescription) async {
+    if (_controller != null && _controller!.value.isRecordingVideo) {
+      await stopRecording();
+    }
+    if (_controller != null && _controller!.value.isStreamingImages) {
+      stopImageStream();
+    }
+    await initialize(cameraDescription: newCameraDescription);
+  }
+
   // 其他摄像头操作...
-} 
+}

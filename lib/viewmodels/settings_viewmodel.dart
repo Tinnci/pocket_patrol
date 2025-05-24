@@ -35,7 +35,11 @@ class SettingsViewModel extends ChangeNotifier {
       default:
         preset = ResolutionPreset.medium; // Default
     }
-    await cameraService.setResolution(preset);
+    // 调用 CameraService 的方法更新全局期望分辨率
+    cameraService.updateGlobalResolutionPreset(preset);
+    // 注意：这里只是更新了 CameraService 内部记录的期望preset，
+    // 实际重新初始化摄像头应用新分辨率的逻辑将在 LiveViewViewModel 中处理，
+    // 当 LiveViewViewModel 监听到 SettingsViewModel 的变化时触发。
   }
 
   // 新增：运动检测灵敏度（0=低，1=中，2=高）
@@ -123,7 +127,8 @@ class SettingsViewModel extends ChangeNotifier {
        default:
          preset = ResolutionPreset.medium;
      }
-     await cameraService.setResolution(preset);
+     // 在加载设置后，通知 CameraService 应用加载的分辨率
+     cameraService.updateGlobalResolutionPreset(preset);
      await cameraService.setNightVision(_isNightVisionEnabled);
      // TODO: 预留：应用运动检测灵敏度、提醒等到相关服务
      // if (motionDetectionService != null) motionDetectionService.setSensitivity(_motionSensitivity);
