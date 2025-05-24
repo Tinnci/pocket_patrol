@@ -6,6 +6,7 @@ class CameraService {
   List<CameraDescription>? _cameras;
   bool _isStreamingImages = false;
   void Function(CameraImage)? _onFrame;
+  String? _recordingPath;
 
   CameraController? get controller => _controller;
   List<CameraDescription>? get cameras => _cameras;
@@ -44,6 +45,29 @@ class CameraService {
     _controller!.stopImageStream();
     _isStreamingImages = false;
     _onFrame = null;
+  }
+
+  /// 开始录像，返回文件路径
+  Future<String> startRecording() async {
+    if (_controller == null || _controller!.value.isRecordingVideo) {
+      throw Exception('摄像头未初始化或正在录像');
+    }
+    final dir = '/storage/emulated/0/Movies/PocketPatrol';
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    final path = '$dir/rec_$ts.mp4';
+    await _controller!.startVideoRecording();
+    _recordingPath = path;
+    return path;
+  }
+
+  /// 停止录像
+  Future<void> stopRecording() async {
+    if (_controller == null || !_controller!.value.isRecordingVideo) {
+      throw Exception('未在录像');
+    }
+    final file = await _controller!.stopVideoRecording();
+    _recordingPath = null;
+    // 可将 file.path 移动/重命名到 _recordingPath
   }
 
   // 其他摄像头操作...

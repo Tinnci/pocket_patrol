@@ -75,6 +75,34 @@ class _LiveViewScreenState extends State<LiveViewScreen> {
                     ),
                   )
                 : Center(child: Text('摄像头未初始化')),
+              const SizedBox(height: 12),
+              // 录像按钮
+              Center(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: viewModel.isRecording ? Colors.red : colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                  ),
+                  icon: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: viewModel.isRecording
+                          ? [BoxShadow(color: Colors.redAccent, blurRadius: 8, spreadRadius: 2)]
+                          : [],
+                    ),
+                  ),
+                  label: Text(viewModel.isRecording ? '停止录像' : '开始录像', style: const TextStyle(fontSize: 16)),
+                  onPressed: viewModel.isRecording
+                      ? () => viewModel.stopRecording()
+                      : () => viewModel.startRecording(),
+                ),
+              ),
               const SizedBox(height: 16),
               // 推流按钮
               FilledButton(
@@ -89,28 +117,76 @@ class _LiveViewScreenState extends State<LiveViewScreen> {
                 ),
               ),
               // 二维码展示区
-              if (viewModel.qrData != null) ...[
-                const SizedBox(height: 16),
-                Card(
-                  color: colorScheme.surfaceContainerHighest,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        const Text('扫码连接（Tailscale 内网）', style: TextStyle(fontWeight: FontWeight.bold)),
-                        QrImageView(
-                          data: viewModel.qrData!,
-                          size: 180,
-                          backgroundColor: Colors.white,
+              const SizedBox(height: 16),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 350),
+                child: viewModel.qrData != null
+                    ? Card(
+                        key: const ValueKey('qr'),
+                        color: colorScheme.surfaceContainerHighest,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              const Text('扫码连接（Tailscale 内网）', style: TextStyle(fontWeight: FontWeight.bold)),
+                              QrImageView(
+                                data: viewModel.qrData!,
+                                size: 180,
+                                backgroundColor: Colors.white,
+                              ),
+                              const SizedBox(height: 8),
+                              SelectableText(viewModel.qrData!, style: TextStyle(fontSize: 12, color: Colors.black54)),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 8),
-                        SelectableText(viewModel.qrData!, style: TextStyle(fontSize: 12, color: Colors.black54)),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+                      )
+                    : Card(
+                        key: const ValueKey('status'),
+                        color: colorScheme.surfaceContainerHighest,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                viewModel.tailscaleStatus != 'connected'
+                                    ? Icons.wifi_off
+                                    : Icons.sync_problem,
+                                color: viewModel.tailscaleStatus != 'connected'
+                                    ? Colors.grey
+                                    : Colors.orange,
+                                size: 48,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                viewModel.statusMessage ?? '二维码暂不可用',
+                                style: TextStyle(
+                                  color: colorScheme.onSurfaceVariant,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 12),
+                              if (viewModel.tailscaleStatus != 'connected')
+                                ElevatedButton(
+                                  onPressed: () {
+                                    // 可引导用户打开 Tailscale App
+                                  },
+                                  child: const Text('打开 Tailscale'),
+                                ),
+                              if (viewModel.signalingStatus != 'started')
+                                ElevatedButton(
+                                  onPressed: () => viewModel.startWebRTCStreaming(),
+                                  child: const Text('重试'),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+              ),
               if (viewModel.isStreaming && viewModel.streamUrl != null) ...[
                 const SizedBox(height: 12),
                 Card(
@@ -194,11 +270,6 @@ class _LiveViewScreenState extends State<LiveViewScreen> {
                         const Text('本地 ICE Candidates'),
                         ...viewModel.localIceCandidates.map((c) => SelectableText(c.toString())).toList(),
                         const Divider(),
-                        const Text('远端 SDP (Answer) 输入'),
-                        _RemoteSdpInput(viewModel: viewModel),
-                        const SizedBox(height: 8),
-                        const Text('远端 ICE Candidate 输入'),
-                        _RemoteIceInput(viewModel: viewModel),
                       ],
                     ),
                   ),
@@ -247,71 +318,6 @@ class _LiveViewScreenState extends State<LiveViewScreen> {
           );
         },
       ),
-    );
-  }
-}
-
-// 组件：远端SDP输入
-class _RemoteSdpInput extends StatefulWidget {
-  final dynamic viewModel;
-  const _RemoteSdpInput({required this.viewModel});
-  @override
-  State<_RemoteSdpInput> createState() => _RemoteSdpInputState();
-}
-class _RemoteSdpInputState extends State<_RemoteSdpInput> {
-  final _controller = TextEditingController();
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: _controller,
-            decoration: const InputDecoration(hintText: '粘贴远端SDP JSON'),
-            minLines: 1,
-            maxLines: 3,
-          ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.send),
-          onPressed: () async {
-            await widget.viewModel.setRemoteSdp(_controller.text);
-            _controller.clear();
-          },
-        ),
-      ],
-    );
-  }
-}
-// 组件：远端ICE输入
-class _RemoteIceInput extends StatefulWidget {
-  final dynamic viewModel;
-  const _RemoteIceInput({required this.viewModel});
-  @override
-  State<_RemoteIceInput> createState() => _RemoteIceInputState();
-}
-class _RemoteIceInputState extends State<_RemoteIceInput> {
-  final _controller = TextEditingController();
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: _controller,
-            decoration: const InputDecoration(hintText: '粘贴远端ICE JSON'),
-            minLines: 1,
-            maxLines: 2,
-          ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.send),
-          onPressed: () async {
-            await widget.viewModel.addRemoteIceCandidate(_controller.text);
-            _controller.clear();
-          },
-        ),
-      ],
     );
   }
 } 

@@ -14,7 +14,7 @@ class LiveViewViewModel extends ChangeNotifier {
   final CameraService cameraService;
   late final StreamingService streamingService;
   late final WebRTCStreamingService webrtcService;
-  late final SignalingService signalingService;
+  SignalingService? signalingService;
   bool isCameraInitialized = false;
   String? error;
   // MJPEG
@@ -34,6 +34,13 @@ class LiveViewViewModel extends ChangeNotifier {
   String? wsUrl;
   String? roomToken;
   String? qrData;
+  // 状态管理
+  String tailscaleStatus = 'connecting'; // connecting/connected/failed
+  String signalingStatus = 'starting'; // starting/started/failed
+  String? statusMessage;
+  // 录像相关
+  bool isRecording = false;
+  String? currentRecordingPath;
 
   LiveViewViewModel({required this.cameraService}) {
     streamingService = StreamingService(
@@ -41,57 +48,84 @@ class LiveViewViewModel extends ChangeNotifier {
       imageConversionService: ImageConversionService(),
     );
     webrtcService = WebRTCStreamingService();
-    webrtcService.onLocalSdp = (sdp) {
-      localSdp = jsonEncode({'sdp': sdp.sdp, 'type': sdp.type});
-      // 自动广播本地 SDP 给所有已连接客户端
-      if (signalingService.server != null) {
-        signalingService.clients.forEach((id, ws) {
-          ws.add(jsonEncode({
-            'type': 'sdp',
-            'role': 'host',
-            'room': roomToken,
-            'data': {'sdp': sdp.sdp, 'type': sdp.type}
-          }));
-        });
-      }
-      notifyListeners();
-    };
-    webrtcService.onLocalIceCandidate = (c) {
-      final candidate = {
-        'candidate': c.candidate,
-        'sdpMid': c.sdpMid,
-        'sdpMLineIndex': c.sdpMLineIndex,
-      };
-      localIceCandidates.add(candidate);
-      // 自动广播本地 ICE
-      if (signalingService.server != null) {
-        signalingService.clients.forEach((id, ws) {
-          ws.add(jsonEncode({
-            'type': 'ice',
-            'role': 'host',
-            'room': roomToken,
-            'data': candidate
-          }));
-        });
-      }
-      notifyListeners();
-    };
     _initNetworkInfo();
   }
 
   Future<void> _initNetworkInfo() async {
-    tailscaleIp = await NetworkService.getTailscaleIp();
-    roomToken = const Uuid().v4();
-    wsUrl = tailscaleIp != null ? 'ws://$tailscaleIp:9000' : null;
-    qrData = wsUrl != null && roomToken != null
-        ? '{"ws":"$wsUrl","room":"$roomToken"}'
-        : null;
-    // 初始化 signalingService
-    if (roomToken != null) {
+    tailscaleStatus = 'connecting';
+    signalingStatus = 'starting';
+    statusMessage = null;
+    notifyListeners();
+    try {
+      tailscaleIp = await NetworkService.getTailscaleIp();
+      if (tailscaleIp == null) {
+        tailscaleStatus = 'failed';
+        statusMessage = '未检测到 Tailscale IP，请先连接虚拟内网';
+        qrData = null;
+        notifyListeners();
+        return;
+      }
+      tailscaleStatus = 'connected';
+      roomToken = const Uuid().v4();
+      wsUrl = 'ws://$tailscaleIp:9000';
+      signalingStatus = 'starting';
       signalingService = SignalingService(
         onMessage: _onSignalMessage,
         roomToken: roomToken!,
       );
+      // 初始化后再设置 webrtc 回调
+      webrtcService.onLocalSdp = (sdp) {
+        localSdp = jsonEncode({'sdp': sdp.sdp, 'type': sdp.type});
+        if (signalingService != null && signalingService!.server != null) {
+          signalingService!.clients.forEach((id, ws) {
+            ws.add(jsonEncode({
+              'type': 'sdp',
+              'role': 'host',
+              'room': roomToken,
+              'data': {'sdp': sdp.sdp, 'type': sdp.type}
+            }));
+          });
+        }
+        notifyListeners();
+      };
+      webrtcService.onLocalIceCandidate = (c) {
+        final candidate = {
+          'candidate': c.candidate,
+          'sdpMid': c.sdpMid,
+          'sdpMLineIndex': c.sdpMLineIndex,
+        };
+        localIceCandidates.add(candidate);
+        if (signalingService != null && signalingService!.server != null) {
+          signalingService!.clients.forEach((id, ws) {
+            ws.add(jsonEncode({
+              'type': 'ice',
+              'role': 'host',
+              'room': roomToken,
+              'data': candidate
+            }));
+          });
+        }
+        notifyListeners();
+      };
+      updateQrData();
+    } catch (e) {
+      tailscaleStatus = 'failed';
+      statusMessage = '获取 Tailscale IP 失败';
+      qrData = null;
+      notifyListeners();
+    }
+  }
+
+  void updateQrData() {
+    if (tailscaleStatus == 'connected' && signalingStatus == 'started' && roomToken != null && wsUrl != null) {
+      qrData = '{"ws":"$wsUrl","room":"$roomToken"}';
+      statusMessage = null;
+    } else if (tailscaleStatus != 'connected') {
+      qrData = null;
+      statusMessage = '未检测到 Tailscale IP，请先连接虚拟内网';
+    } else if (signalingStatus != 'started') {
+      qrData = null;
+      statusMessage = '信令服务未启动，请重试';
     }
     notifyListeners();
   }
@@ -163,7 +197,9 @@ class LiveViewViewModel extends ChangeNotifier {
   Future<void> startWebRTCStreaming() async {
     try {
       await webrtcService.startWebRTCServer();
-      await signalingService.start(port: 9000);
+      if (signalingService != null) {
+        await signalingService!.start(port: 9000);
+      }
       isWebRTCStreaming = true;
       webrtcConnectionState = 'connecting';
       error = null;
@@ -172,19 +208,27 @@ class LiveViewViewModel extends ChangeNotifier {
         webrtcConnectionState = state;
         notifyListeners();
       };
+      signalingStatus = 'started';
+      updateQrData();
     } catch (e) {
       error = 'WebRTC 推流启动失败: $e';
       isWebRTCStreaming = false;
       webrtcConnectionState = 'failed';
+      signalingStatus = 'failed';
+      updateQrData();
     }
     notifyListeners();
   }
 
   Future<void> stopWebRTCStreaming() async {
     await webrtcService.stopWebRTCServer();
-    await signalingService.stop();
+    if (signalingService != null) {
+      await signalingService!.stop();
+    }
     isWebRTCStreaming = false;
     webrtcConnectionState = 'disconnected';
+    signalingStatus = 'starting';
+    updateQrData();
     localSdp = null;
     remoteSdp = null;
     localIceCandidates.clear();
@@ -230,7 +274,7 @@ class LiveViewViewModel extends ChangeNotifier {
   void dispose() {
     webrtcService.stopWebRTCServer();
     streamingService.stopStreamingServer();
-    signalingService.stop();
+    signalingService?.stop();
     super.dispose();
   }
 
@@ -238,4 +282,31 @@ class LiveViewViewModel extends ChangeNotifier {
   // Future<void> startWebRTCStreaming() async {}
   // Future<void> stopWebRTCStreaming() async {}
   // ...
+
+  Future<void> startRecording() async {
+    if (isRecording) return;
+    try {
+      final path = await cameraService.startRecording();
+      isRecording = true;
+      currentRecordingPath = path;
+      error = null;
+    } catch (e) {
+      error = '录像启动失败: $e';
+      isRecording = false;
+    }
+    notifyListeners();
+  }
+
+  Future<void> stopRecording() async {
+    if (!isRecording) return;
+    try {
+      await cameraService.stopRecording();
+      isRecording = false;
+      currentRecordingPath = null;
+      error = null;
+    } catch (e) {
+      error = '录像停止失败: $e';
+    }
+    notifyListeners();
+  }
 } 
