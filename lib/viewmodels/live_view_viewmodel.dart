@@ -417,7 +417,6 @@ class LiveViewViewModel extends ChangeNotifier {
        isCameraInitialized = false;
     }
      currentMode = CameraMode.previewOnly; // 回到预览模式 (即使预览已停止)
-     notifyListeners(); // Notify UI changes
   }
 
   Future<void> cycleSwitchCamera() async {
@@ -451,16 +450,6 @@ class LiveViewViewModel extends ChangeNotifier {
       isCameraInitialized = true; // 假设恢复成功
     }
     notifyListeners();
-  }
-
-  // Helper method to convert string resolution to ResolutionPreset
-  ResolutionPreset _getResolutionPresetFromString(String resolutionStr) {
-    switch (resolutionStr) {
-      case '720p': return ResolutionPreset.medium;
-      case '1080p': return ResolutionPreset.high;
-      case '4K': return ResolutionPreset.max;
-      default: return ResolutionPreset.medium;
-    }
   }
 
   // New getter for the camera switch button tooltip

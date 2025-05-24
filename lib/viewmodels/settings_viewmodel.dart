@@ -11,8 +11,11 @@ class SettingsViewModel extends ChangeNotifier {
   ThemeMode themeMode = ThemeMode.system;
   bool useLightMode = true;
 
+  // 新增：可用分辨率选项列表
+  final List<String> availableResolutions = const ['720p', '1080p', '4K']; // 硬编码的选项列表
+
   // 新增：分辨率
-  String _resolution = '720p';
+  String _resolution = '720p'; // 默认值应是 availableResolutions 中的一个
   String get resolution => _resolution;
   Future<void> setResolution(String v) async {
     if (_resolution == v) return; // Avoid unnecessary updates
@@ -106,7 +109,11 @@ class SettingsViewModel extends ChangeNotifier {
   Future<void> loadSettings() async {
      await loadThemeMode();
      // 加载其他设置项，使用 ?? 提供默认值
-     _resolution = await settingsService.loadResolution() ?? '720p';
+     // 加载的分辨率如果不在 availableResolutions 中，可以使用默认值
+     _resolution = await settingsService.loadResolution() ?? availableResolutions.first; // 使用列表的第一个作为默认值
+     if (!availableResolutions.contains(_resolution)) {
+        _resolution = availableResolutions.first; // 如果加载的值无效，使用默认值
+     }
      _motionSensitivity = await settingsService.loadMotionSensitivity() ?? 1.0;
      _isNightVisionEnabled = await settingsService.loadNightVisionEnabled() ?? false;
      _isMotionDetectionRemindEnabled = await settingsService.loadMotionDetectionRemindEnabled() ?? true;

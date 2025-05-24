@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../viewmodels/settings_viewmodel.dart';
+import '../viewmodels/live_view_viewmodel.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = Provider.of<SettingsViewModel>(context);
+    final settingsViewModel = Provider.of<SettingsViewModel>(context);
+    final liveViewViewModel = Provider.of<LiveViewViewModel>(context);
     final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
@@ -29,30 +31,31 @@ class SettingsScreen extends StatelessWidget {
                   title: const Text('分辨率'),
                   subtitle: const Text('选择摄像头分辨率'),
                   trailing: DropdownButton<String>(
-                    value: viewModel.resolution,
-                    items: const [
-                      DropdownMenuItem(value: '720p', child: Text('720p')),
-                      DropdownMenuItem(value: '1080p', child: Text('1080p')),
-                      DropdownMenuItem(value: '4K', child: Text('4K')),
-                    ],
+                    value: settingsViewModel.resolution,
+                    items: settingsViewModel.availableResolutions.map((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      );
+                    }).toList(),
                     onChanged: (v) {
-                      if (v != null) viewModel.setResolution(v);
+                      if (v != null) settingsViewModel.setResolution(v);
                     },
                   ),
                 ),
                 const Divider(height: 1),
                 ListTile(
                   title: const Text('运动检测灵敏度'),
-                  subtitle: Text('调节运动检测灵敏度 (${viewModel.motionSensitivityLabel})'),
+                  subtitle: Text('调节运动检测灵敏度 (${settingsViewModel.motionSensitivityLabel})'),
                   trailing: SizedBox(
                     width: 120,
                     child: Slider(
-                      value: viewModel.motionSensitivity,
+                      value: settingsViewModel.motionSensitivity,
                       min: 0,
                       max: 2,
                       divisions: 2,
-                      label: viewModel.motionSensitivityLabel,
-                      onChanged: (v) => viewModel.setMotionSensitivity(v),
+                      label: settingsViewModel.motionSensitivityLabel,
+                      onChanged: (v) => settingsViewModel.setMotionSensitivity(v),
                     ),
                   ),
                 ),
@@ -61,8 +64,8 @@ class SettingsScreen extends StatelessWidget {
                   title: const Text('夜视'),
                   subtitle: const Text('启用夜视模式'),
                   trailing: Switch(
-                    value: viewModel.isNightVisionEnabled,
-                    onChanged: (v) => viewModel.setNightVisionEnabled(v),
+                    value: settingsViewModel.isNightVisionEnabled,
+                    onChanged: (v) => settingsViewModel.setNightVisionEnabled(v),
                   ),
                 ),
               ],
@@ -77,8 +80,8 @@ class SettingsScreen extends StatelessWidget {
                   title: const Text('移动侦测提醒'),
                   subtitle: const Text('当检测到运动时发送提醒'),
                   trailing: Switch(
-                    value: viewModel.isMotionDetectionRemindEnabled,
-                    onChanged: (v) => viewModel.setMotionDetectionRemindEnabled(v),
+                    value: settingsViewModel.isMotionDetectionRemindEnabled,
+                    onChanged: (v) => settingsViewModel.setMotionDetectionRemindEnabled(v),
                   ),
                 ),
                 const Divider(height: 1),
@@ -86,8 +89,8 @@ class SettingsScreen extends StatelessWidget {
                   title: const Text('声音提醒'),
                   subtitle: const Text('当检测到声音时发送提醒'),
                   trailing: Switch(
-                    value: viewModel.isSoundRemindEnabled,
-                    onChanged: (v) => viewModel.setSoundRemindEnabled(v),
+                    value: settingsViewModel.isSoundRemindEnabled,
+                    onChanged: (v) => settingsViewModel.setSoundRemindEnabled(v),
                   ),
                 ),
               ],
@@ -105,9 +108,25 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 const Divider(height: 1),
                 ListTile(
-                  title: const Text('远程访问'),
-                  subtitle: const Text('通过 Tailscale 内网访问'),
-                  trailing: Text('已启用', style: TextStyle(color: colorScheme.primary)),
+                  leading: Icon(Icons.public, color: colorScheme.primary),
+                  title: const Text('远程访问 (Tailscale)'),
+                  subtitle: Text(liveViewViewModel.tailscaleIp != null
+                      ? liveViewViewModel.tailscaleIp!
+                      : (liveViewViewModel.tailscaleStatus == 'connecting'
+                          ? '连接中...'
+                          : '未连接')),
+                  trailing: Text(
+                    liveViewViewModel.tailscaleStatus == 'connected'
+                        ? '已连接'
+                        : liveViewViewModel.tailscaleStatus == 'connecting'
+                            ? '连接中...'
+                            : '未连接',
+                    style: TextStyle(
+                      color: liveViewViewModel.tailscaleStatus == 'connected'
+                          ? Colors.green
+                          : Colors.grey,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -118,8 +137,8 @@ class SettingsScreen extends StatelessWidget {
             child: ListTile(
               title: const Text('浅色模式'),
               trailing: Switch(
-                value: viewModel.useLightMode,
-                onChanged: (v) => viewModel.toggleTheme(v),
+                value: settingsViewModel.useLightMode,
+                onChanged: (v) => settingsViewModel.toggleTheme(v),
               ),
             ),
           ),
