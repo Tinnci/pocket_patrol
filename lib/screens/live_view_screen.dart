@@ -37,7 +37,7 @@ class _LiveViewScreenState extends State<LiveViewScreen> {
      // 移除 ViewModel 监听
      _viewModel.removeListener(_handleRecordingFinished);
      // IMPORTANT: Stop camera preview and streams when screen is disposed
-     _viewModel.stopCameraPreviewAndStreams(); // Call the new method
+     _viewModel.disposeResources(); // This method is now async and handles all cleanup
     super.dispose();
   }
 

@@ -73,6 +73,8 @@ class LiveViewViewModel extends ChangeNotifier {
     _initNetworkInfo();
     // Listen to SettingsViewModel changes
     settingsViewModel.addListener(_onSettingsChanged);
+    // NEW: Initialize isRecording state from CameraService
+    isRecording = cameraService.isRecording; // Assuming CameraService has an isRecording getter
   }
 
   Future<void> _initNetworkInfo() async {
@@ -342,22 +344,37 @@ class LiveViewViewModel extends ChangeNotifier {
   void dispose() {
     // Remove listener
     settingsViewModel.removeListener(_onSettingsChanged);
-    webrtcService.stopWebRTCServer();
-    streamingService.stopStreamingServer();
-    signalingService?.stop();
-    // 停止录像，避免资源泄露 (dispose 可能在录像结束前调用)
-    if (isRecording) {
-      cameraService.stopRecording();
-    }
-    currentMode = CameraMode.previewOnly; // ViewModel 销毁，回到预览模式
-    cameraService.dispose(); // 释放 CameraController 资源
+    // NOTE: Resource disposal is now handled by disposeResources, called from the Screen.
+    // Do NOT dispose resources directly here.
     super.dispose();
   }
 
-  // 预留：WebRTC 推流接口
-  // Future<void> startWebRTCStreaming() async {}
-  // Future<void> stopWebRTCStreaming() async {}
-  // ...
+  // NEW: Async method for resource disposal, called from Screen.
+  Future<void> disposeResources() async {
+     // Prioritize stopping recording and streams, and await completion
+     if (isRecording) {
+       print('LiveViewViewModel: Disposing, stopping recording...');
+       await stopRecording();
+     }
+     if (isWebRTCStreaming) {
+       print('LiveViewViewModel: Disposing, stopping WebRTC streaming...');
+       await stopWebRTCStreaming();
+     }
+     if (isStreaming) {
+        print('LiveViewViewModel: Disposing, stopping MJPEG streaming...');
+        await stopStreaming(); // Stop MJPEG streaming also needs await
+     }
+
+     // Now safely dispose CameraService
+     cameraService.stopImageStream(); // Call again for safety
+     if (currentMode != CameraMode.webrtcStreaming) {
+        print('LiveViewViewModel: Disposing, disposing CameraService...');
+        await cameraService.dispose(); // Ensure dispose completes
+        isCameraInitialized = false;
+     }
+     currentMode = CameraMode.previewOnly;
+     notifyListeners(); // Notify after resources are disposed
+  }
 
   Future<void> startRecording() async {
     if (isRecording) return;
@@ -388,35 +405,59 @@ class LiveViewViewModel extends ChangeNotifier {
   }
 
   Future<void> stopRecording() async {
-    if (!isRecording) return;
+    if (!isRecording) {
+      print('LiveViewViewModel: stopRecording called but not recording.');
+      return; // Not currently recording
+    }
+    print('LiveViewViewModel: Attempting to stop recording...');
     try {
+      // cameraService.stopRecording() is now more robust and returns XFile?
       final recordedFile = await cameraService.stopRecording();
-      _lastRecordedPath = recordedFile.path;
-      currentRecordingPath = null;
-      isRecording = false;
-      error = null;
-      currentMode = CameraMode.previewOnly;
+      if (recordedFile != null) {
+        _lastRecordedPath = recordedFile.path;
+        currentRecordingPath = null;
+        error = null;
+        currentMode = CameraMode.previewOnly;
+        print('LiveViewViewModel: Recording stopped successfully.');
+      } else {
+         // If stopRecording returned null, it might have failed or wasn't recording
+         error = '录像停止失败或未在录像';
+         currentRecordingPath = null;
+         _lastRecordedPath = null;
+         currentMode = CameraMode.previewOnly; // Assume back to preview
+         print('LiveViewViewModel: Recording stop indicated failure or not recording.');
+      }
     } catch (e) {
-      error = '录像停止失败: $e';
-      isRecording = false;
+      error = '录像停止异常: $e';
       currentRecordingPath = null;
       _lastRecordedPath = null;
+      currentMode = CameraMode.previewOnly; // Assume back to preview
+      print('LiveViewViewModel: Recording stop exception: $e');
+    } finally {
+      isRecording = false; // Ensure state is updated regardless of outcome
+      notifyListeners();
+      print('LiveViewViewModel: isRecording set to false, notifyListeners called.');
     }
-    notifyListeners();
   }
 
-  /// 新增方法：停止摄像头预览和图像流
-  /// 在 LiveViewScreen 销毁时调用
+  /// New method: Stop camera preview and image streams.
+  /// This method is primarily intended for scenarios like page disposal.
+  /// It will stop image streams (used by MJPEG) and dispose the controller,
+  /// unless WebRTC is active (as WebRTC manages its own camera access).
+  /// IMPORTANT: Ensure recording is stopped before calling this if needed.
   void stopCameraPreviewAndStreams() {
-    // 停止图像流 (如果正在进行 MJPEG 推流，它会停止)
+    print('LiveViewViewModel: stopCameraPreviewAndStreams called.');
+    // Stop image stream (if MJPEG is active, this will stop it)
     cameraService.stopImageStream();
-    // 释放 CameraController 资源 (如果不是 WebRTC 模式)
-    // WebRTC 模式下 CameraService.dispose() 已在 startWebRTCStreaming 中调用
+    // Dispose CameraController resource (if not in WebRTC mode)
+    // In WebRTC mode, CameraService.dispose() might have been called by startWebRTCStreaming
     if (currentMode != CameraMode.webrtcStreaming) {
-       cameraService.dispose();
+       cameraService.dispose(); // This should be safe to call multiple times
        isCameraInitialized = false;
     }
-     currentMode = CameraMode.previewOnly; // 回到预览模式 (即使预览已停止)
+    currentMode = CameraMode.previewOnly; // Return to preview mode (even if preview is stopped)
+    notifyListeners(); // Notify of potential state changes
+    print('LiveViewViewModel: stopCameraPreviewAndStreams finished.');
   }
 
   Future<void> cycleSwitchCamera() async {

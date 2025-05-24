@@ -24,6 +24,9 @@ class CameraService {
     print('CameraService: Global resolution preset updated to $preset');
   }
 
+  // NEW: Add isRecording getter
+  bool get isRecording => _controller?.value.isRecordingVideo ?? false;
+
   /// 初始化摄像头
   Future<void> initialize({CameraDescription? cameraDescription}) async {
     // 先释放旧的控制器
@@ -97,23 +100,24 @@ class CameraService {
   }
 
   /// 停止录像，返回录制完成的文件
-  Future<XFile> stopRecording() async {
+  Future<XFile?> stopRecording() async {
+    // Check if controller exists and is actually recording
     if (_controller == null || !_controller!.value.isRecordingVideo) {
-      throw Exception('未在录像');
+      print('CameraService: stopRecording called but not currently recording.');
+      return null; // Not currently recording, return null or throw specific exception
     }
-    final file = await _controller!.stopVideoRecording();
-
-    if (_recordingPath != null) {
-       try {
-         final newFile = await File(file.path).copy(_recordingPath!);
-         print('录像文件已移动到: ${_recordingPath!}');
-         return XFile(newFile.path);
-       } catch (e) {
-         print('移动录像文件失败: $e');
-         return file;
-       }
-    } else {
-       return file;
+    try {
+      print('CameraService: Attempting to stop video recording...');
+      final file = await _controller!.stopVideoRecording();
+      // File moving logic can be moved to the ViewModel or RecordingService
+      _recordingPath = null; // Clear recording path after stopping
+      print('CameraService: Video recording stopped.');
+      return file; // Return the recorded file
+    } catch (e) {
+      print('CameraService: Error stopping video recording: $e');
+      // Handle exception, e.g., log the error, or re-initialize/clean up state
+      _recordingPath = null; // Clear path even on error
+      return null; // Return null to indicate stop failed
     }
   }
 
