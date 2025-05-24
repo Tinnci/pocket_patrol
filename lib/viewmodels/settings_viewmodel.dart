@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import '../services/settings_service.dart';
+import '../services/camera_service.dart';
+import 'package:camera/camera.dart';
 
 /// 负责主题切换、设置项、Token 管理等业务逻辑
 class SettingsViewModel extends ChangeNotifier {
   final SettingsService settingsService;
+  final CameraService cameraService;
 
   ThemeMode themeMode = ThemeMode.system;
   bool useLightMode = true;
@@ -11,10 +14,28 @@ class SettingsViewModel extends ChangeNotifier {
   // 新增：分辨率
   String _resolution = '720p';
   String get resolution => _resolution;
-  void setResolution(String v) {
+  Future<void> setResolution(String v) async {
+    if (_resolution == v) return; // Avoid unnecessary updates
     _resolution = v;
     notifyListeners();
-    // 可持久化到 settingsService
+    await settingsService.saveResolution(v); // Save to persistence
+    // TODO: 可持久化到 settingsService
+    // TODO: 通知 CameraService 应用新的分辨率
+    ResolutionPreset preset;
+    switch (v) {
+      case '720p':
+        preset = ResolutionPreset.medium;
+        break;
+      case '1080p':
+        preset = ResolutionPreset.high;
+        break;
+      case '4K':
+        preset = ResolutionPreset.max;
+        break;
+      default:
+        preset = ResolutionPreset.medium; // Default
+    }
+    await cameraService.setResolution(preset);
   }
 
   // 新增：运动检测灵敏度（0=低，1=中，2=高）
@@ -30,24 +51,95 @@ class SettingsViewModel extends ChangeNotifier {
         return '中';
     }
   }
-  void setMotionSensitivity(double v) {
+  Future<void> setMotionSensitivity(double v) async {
+    if (_motionSensitivity == v) return; // Avoid unnecessary updates
     _motionSensitivity = v;
     notifyListeners();
-    // 可持久化到 settingsService
+    await settingsService.saveMotionSensitivity(v); // Save to persistence
+    // TODO: 可持久化到 settingsService
+    // TODO: 通知运动检测服务应用新的灵敏度
   }
 
-  SettingsViewModel({required this.settingsService});
+  // 新增：夜视模式
+  bool _isNightVisionEnabled = false;
+  bool get isNightVisionEnabled => _isNightVisionEnabled;
+  Future<void> setNightVisionEnabled(bool value) async {
+    if (_isNightVisionEnabled == value) return; // Avoid unnecessary updates
+    _isNightVisionEnabled = value;
+    notifyListeners();
+    await settingsService.saveNightVisionEnabled(value); // Save to persistence
+    // TODO: 可持久化到 settingsService
+    // TODO: 通知摄像头服务启用/禁用夜视
+    await cameraService.setNightVision(value);
+  }
+
+  // 新增：移动侦测提醒
+  bool _isMotionDetectionRemindEnabled = true;
+  bool get isMotionDetectionRemindEnabled => _isMotionDetectionRemindEnabled;
+  Future<void> setMotionDetectionRemindEnabled(bool value) async {
+    if (_isMotionDetectionRemindEnabled == value) return; // Avoid unnecessary updates
+    _isMotionDetectionRemindEnabled = value;
+    notifyListeners();
+    await settingsService.saveMotionDetectionRemindEnabled(value); // Save to persistence
+    // TODO: 可持久化到 settingsService
+    // TODO: 通知运动检测服务是否发送提醒
+  }
+
+  // 新增：声音提醒
+  bool _isSoundRemindEnabled = false;
+  bool get isSoundRemindEnabled => _isSoundRemindEnabled;
+  Future<void> setSoundRemindEnabled(bool value) async {
+    if (_isSoundRemindEnabled == value) return; // Avoid unnecessary updates
+    _isSoundRemindEnabled = value;
+    notifyListeners();
+    await settingsService.saveSoundRemindEnabled(value); // Save to persistence
+    // TODO: 可持久化到 settingsService
+    // TODO: 通知声音检测服务是否发送提醒
+  }
+
+  SettingsViewModel({required this.settingsService, required this.cameraService});
+
+  // TODO: 加载所有设置项
+  Future<void> loadSettings() async {
+     await loadThemeMode();
+     // 加载其他设置项，使用 ?? 提供默认值
+     _resolution = await settingsService.loadResolution() ?? '720p';
+     _motionSensitivity = await settingsService.loadMotionSensitivity() ?? 1.0;
+     _isNightVisionEnabled = await settingsService.loadNightVisionEnabled() ?? false;
+     _isMotionDetectionRemindEnabled = await settingsService.loadMotionDetectionRemindEnabled() ?? true;
+     _isSoundRemindEnabled = await settingsService.loadSoundRemindEnabled() ?? false;
+
+     // Initial application of loaded settings to services
+     ResolutionPreset preset;
+     switch (_resolution) {
+       case '720p':
+         preset = ResolutionPreset.medium;
+         break;
+       case '1080p':
+         preset = ResolutionPreset.high;
+         break;
+       case '4K':
+         preset = ResolutionPreset.max;
+         break;
+       default:
+         preset = ResolutionPreset.medium;
+     }
+     await cameraService.setResolution(preset);
+     await cameraService.setNightVision(_isNightVisionEnabled);
+     notifyListeners(); // 加载完成后通知一次
+  }
 
   Future<void> loadThemeMode() async {
     final saved = await settingsService.loadThemeMode();
     if (saved != null) {
       useLightMode = saved;
       themeMode = saved ? ThemeMode.light : ThemeMode.dark;
-      notifyListeners();
+      // 这里不需要 notifyListeners()，因为 loadSettings 最后会通知
     }
   }
 
   Future<void> toggleTheme(bool useLight) async {
+    if (useLightMode == useLight) return; // Avoid unnecessary updates
     useLightMode = useLight;
     themeMode = useLight ? ThemeMode.light : ThemeMode.dark;
     await settingsService.saveThemeMode(useLight);

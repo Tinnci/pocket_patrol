@@ -20,23 +20,27 @@ alwaysApply: false
 
 1. **摄像头实时预览**
    - CameraService 封装底层操作，LiveViewViewModel 管理状态，LiveViewScreen 只负责 UI。
-2. **录像管理**
-   - RecordingService 支持本地录像文件的获取、删除，RecordingsViewModel 管理列表，RecordingsScreen 负责展示与交互。
+2. **摄像头功能互斥控制**
+   - 已实现 MJPEG 推流、WebRTC 推流、本地录像之间的互斥，避免资源冲突。
+3. **录像管理**
+   - RecordingService 支持本地录像文件的获取、删除、文件移动（停止录像时）。
+   - RecordingsViewModel 管理列表，RecordingsScreen 负责展示与交互。
    - 已支持本地录像回放（video_player），UI 支持点击播放、长按删除。
-3. **设置与主题切换**
+   - 已实现录像完成提示与从 LiveView 快速回放功能。
+4. **设置与主题切换**
    - SettingsService 支持主题模式持久化，SettingsViewModel 管理切换与读取，SettingsScreen 响应式切换主题。
-4. **MJPEG 推流与本地流媒体服务器**
+5. **MJPEG 推流与本地流媒体服务器**
    - StreamingService 基于 shelf 实现 MJPEG HTTP 流媒体服务器，支持认证、端口配置。
    - ImageConversionService 支持 CameraImage → JPEG 转换。
    - LiveViewViewModel/Screen 支持一键推流、推流状态、推流地址展示。
-5. **WebRTC 推流与自动化信令（多端）**
-   - WebRTCStreamingService 支持摄像头 WebRTC 推流。
+6. **WebRTC 推流与自动化信令（多端）**
+   - WebRTCStreamingService 支持摄像头 WebRTC 推流（通过 flutter_webrtc 独立访问摄像头）。
    - SignalingService 支持 WebSocket 自动信令，支持多端协商。
    - LiveViewViewModel/Screen 支持 WebRTC 推流控制、SDP/ICE 自动交换。
-6. **二维码分享与 Tailscale IP 支持**
+7. **二维码分享与 Tailscale IP 支持**
    - 支持生成二维码，包含 ws 地址、roomToken 等，便于观看端扫码自动连接。
    - 支持自动获取 Tailscale 虚拟网卡 IP。
-7. **全局 Provider 注入**
+8. **全局 Provider 注入**
    - main.dart 启动时自动加载设置和数据，所有页面响应式。
 
 ---
@@ -45,11 +49,12 @@ alwaysApply: false
 
 - **观看端扫码自动连接与 WebRTC 播放**：实现扫码后自动连接信令服务器，自动完成 SDP/ICE 协商并播放远程视频流。
 - **安全认证与 Token 管理**：完善 Token 生成、校验、推流认证，提升安全性。
-- **设置项扩展与持久化**：支持分辨率、运动检测灵敏度、Tailscale IP 等更多设置项。
-- **录像仓库与数据同步**：预留本地/远程录像数据同步接口，支持云端同步。
-- **高级特性**：如运动检测、云存储、多摄像头支持等，按需扩展。
+- **设置项扩展与持久化**：支持分辨率、运动检测灵敏度、Tailscale IP 等更多设置项的 UI 绑定、持久化和跨页面同步显示（尤其 LiveView 和 Settings 页面）。
+- **录像仓库与数据同步**：预留本地/远程录像数据同步接口，支持云端同步；增强录像列表信息展示（时长、大小、缩略图）。
+- **动态生成推流地址**：根据网络状态（Tailscale IP/本地 IP）动态更新 MJPEG 和 WebRTC 推流地址。
+- **高级特性**：如运动检测（需与灵敏度设置联动）、云存储、多摄像头支持等，按需扩展。
 
-> 本规则持续迭代，优先保证摄像头流采集、推流、Tailscale 虚拟内网访问、认证、设置、录像等核心目标。
+> 本规则持续迭代，优先保证摄像头流采集、推流、Tailscale 虚拟内网访问、认证,设置、录像、网络等核心体验。
 
 ---
 

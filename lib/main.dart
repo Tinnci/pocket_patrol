@@ -11,11 +11,15 @@ import 'viewmodels/recordings_viewmodel.dart';
 import 'viewmodels/settings_viewmodel.dart';
 
 void main() {
+  // Create CameraService instance here to share
+  final cameraService = CameraService();
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (_) => LiveViewViewModel(cameraService: CameraService()),
+          // Provide the shared CameraService instance
+          create: (_) => LiveViewViewModel(cameraService: cameraService),
         ),
         ChangeNotifierProvider(
           create: (_) {
@@ -27,8 +31,13 @@ void main() {
         ),
         ChangeNotifierProvider(
           create: (_) {
-            final vm = SettingsViewModel(settingsService: SettingsService());
-            vm.loadThemeMode();
+            final vm = SettingsViewModel(
+              settingsService: SettingsService(),
+              cameraService: cameraService, // Provide the shared CameraService instance
+              // TODO: Provide other services here
+            );
+            // 在 ViewModel 创建时加载所有设置
+            vm.loadSettings();
             return vm;
           },
         ),
@@ -46,7 +55,7 @@ class PocketPatrolApp extends StatefulWidget {
 }
 
 class _PocketPatrolAppState extends State<PocketPatrolApp> {
-  bool _useMaterial3 = true;
+  bool _useMaterial3 = true; // TODO: This should likely be driven by settingsViewModel
   int _selectedIndex = 0;
 
   void _onItemTapped(int index) {
@@ -71,12 +80,12 @@ class _PocketPatrolAppState extends State<PocketPatrolApp> {
       themeMode: settingsViewModel.themeMode,
       theme: ThemeData(
         colorSchemeSeed: Colors.blue,
-        useMaterial3: _useMaterial3,
+        useMaterial3: _useMaterial3, // TODO: Use settingsViewModel
         brightness: Brightness.light,
       ),
       darkTheme: ThemeData(
         colorSchemeSeed: Colors.blue,
-        useMaterial3: _useMaterial3,
+        useMaterial3: _useMaterial3, // TODO: Use settingsViewModel
         brightness: Brightness.dark,
       ),
       home: Scaffold(

@@ -30,18 +30,20 @@ class SettingsScreen extends StatelessWidget {
                   subtitle: const Text('选择摄像头分辨率'),
                   trailing: DropdownButton<String>(
                     value: viewModel.resolution,
-                    items: [
+                    items: const [
                       DropdownMenuItem(value: '720p', child: Text('720p')),
                       DropdownMenuItem(value: '1080p', child: Text('1080p')),
                       DropdownMenuItem(value: '4K', child: Text('4K')),
                     ],
-                    onChanged: (v) => viewModel.setResolution(v!),
+                    onChanged: (v) {
+                      if (v != null) viewModel.setResolution(v);
+                    },
                   ),
                 ),
                 const Divider(height: 1),
                 ListTile(
                   title: const Text('运动检测灵敏度'),
-                  subtitle: const Text('调节运动检测灵敏度'),
+                  subtitle: Text('调节运动检测灵敏度 (${viewModel.motionSensitivityLabel})'),
                   trailing: SizedBox(
                     width: 120,
                     child: Slider(
@@ -57,8 +59,11 @@ class SettingsScreen extends StatelessWidget {
                 const Divider(height: 1),
                 ListTile(
                   title: const Text('夜视'),
-                  subtitle: const Text('关闭'),
-                  trailing: Text('关闭', style: TextStyle(color: colorScheme.primary)),
+                  subtitle: const Text('启用夜视模式'),
+                  trailing: Switch(
+                    value: viewModel.isNightVisionEnabled,
+                    onChanged: (v) => viewModel.setNightVisionEnabled(v),
+                  ),
                 ),
               ],
             ),
@@ -70,14 +75,20 @@ class SettingsScreen extends StatelessWidget {
               children: [
                 ListTile(
                   title: const Text('移动侦测提醒'),
-                  subtitle: const Text('开启'),
-                  trailing: Text('开启', style: TextStyle(color: colorScheme.primary)),
+                  subtitle: const Text('当检测到运动时发送提醒'),
+                  trailing: Switch(
+                    value: viewModel.isMotionDetectionRemindEnabled,
+                    onChanged: (v) => viewModel.setMotionDetectionRemindEnabled(v),
+                  ),
                 ),
                 const Divider(height: 1),
                 ListTile(
                   title: const Text('声音提醒'),
-                  subtitle: const Text('关闭'),
-                  trailing: Text('关闭', style: TextStyle(color: colorScheme.primary)),
+                  subtitle: const Text('当检测到声音时发送提醒'),
+                  trailing: Switch(
+                    value: viewModel.isSoundRemindEnabled,
+                    onChanged: (v) => viewModel.setSoundRemindEnabled(v),
+                  ),
                 ),
               ],
             ),
@@ -89,13 +100,13 @@ class SettingsScreen extends StatelessWidget {
               children: [
                 ListTile(
                   title: const Text('Wi-Fi'),
-                  subtitle: const Text('已连接'),
+                  subtitle: const Text('当前连接的网络信息'),
                   trailing: Text('家庭网络', style: TextStyle(color: colorScheme.primary)),
                 ),
                 const Divider(height: 1),
                 ListTile(
                   title: const Text('远程访问'),
-                  subtitle: const Text('已启用'),
+                  subtitle: const Text('通过 Tailscale 内网访问'),
                   trailing: Text('已启用', style: TextStyle(color: colorScheme.primary)),
                 ),
               ],

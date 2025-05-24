@@ -4,6 +4,7 @@ import 'package:camera/camera.dart';
 import '../viewmodels/live_view_viewmodel.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'recording_player_screen.dart';
+import '../viewmodels/settings_viewmodel.dart';
 
 class LiveViewScreen extends StatefulWidget {
   const LiveViewScreen({Key? key}) : super(key: key);
@@ -66,6 +67,7 @@ class _LiveViewScreenState extends State<LiveViewScreen> {
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<LiveViewViewModel>(context);
+    final settingsViewModel = Provider.of<SettingsViewModel>(context); // Access SettingsViewModel
     final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
@@ -338,19 +340,29 @@ class _LiveViewScreenState extends State<LiveViewScreen> {
                     ListTile(
                       leading: Icon(Icons.videocam, color: colorScheme.primary),
                       title: const Text('摄像头分辨率'),
-                      trailing: const Text('1080p'),
+                      trailing: Text(settingsViewModel.resolution), // Bind to SettingsViewModel
                     ),
                     const Divider(height: 1),
                     ListTile(
                       leading: Icon(Icons.sensors, color: colorScheme.primary),
                       title: const Text('运动检测灵敏度'),
-                      trailing: const Text('中'),
+                      trailing: Text(settingsViewModel.motionSensitivityLabel), // Bind to SettingsViewModel
                     ),
                     const Divider(height: 1),
                     ListTile(
                       leading: Icon(Icons.public, color: colorScheme.primary),
                       title: const Text('远程访问'),
-                      trailing: const Text('已启用'),
+                      // Display Tailscale status from LiveViewViewModel for actual remote access status
+                      trailing: Text(
+                        viewModel.tailscaleStatus == 'connected'
+                            ? '已启用'
+                            : viewModel.tailscaleStatus == 'connecting'
+                                ? '连接中...'
+                                : '未连接',
+                        style: TextStyle(
+                          color: viewModel.tailscaleStatus == 'connected' ? Colors.green : Colors.grey
+                        )
+                      ),
                     ),
                   ],
                 ),
