@@ -56,8 +56,8 @@ class SettingsViewModel extends ChangeNotifier {
     _motionSensitivity = v;
     notifyListeners();
     await settingsService.saveMotionSensitivity(v); // Save to persistence
-    // TODO: 可持久化到 settingsService
-    // TODO: 通知运动检测服务应用新的灵敏度
+    // TODO: 预留：通知运动检测服务应用新的灵敏度
+    // if (motionDetectionService != null) motionDetectionService.setSensitivity(v);
   }
 
   // 新增：夜视模式
@@ -68,8 +68,7 @@ class SettingsViewModel extends ChangeNotifier {
     _isNightVisionEnabled = value;
     notifyListeners();
     await settingsService.saveNightVisionEnabled(value); // Save to persistence
-    // TODO: 可持久化到 settingsService
-    // TODO: 通知摄像头服务启用/禁用夜视
+    // TODO: 预留：通知摄像头服务启用/禁用夜视
     await cameraService.setNightVision(value);
   }
 
@@ -81,8 +80,8 @@ class SettingsViewModel extends ChangeNotifier {
     _isMotionDetectionRemindEnabled = value;
     notifyListeners();
     await settingsService.saveMotionDetectionRemindEnabled(value); // Save to persistence
-    // TODO: 可持久化到 settingsService
-    // TODO: 通知运动检测服务是否发送提醒
+    // TODO: 预留：通知运动检测服务是否发送提醒
+    // if (motionDetectionService != null) motionDetectionService.setRemindEnabled(value);
   }
 
   // 新增：声音提醒
@@ -93,13 +92,13 @@ class SettingsViewModel extends ChangeNotifier {
     _isSoundRemindEnabled = value;
     notifyListeners();
     await settingsService.saveSoundRemindEnabled(value); // Save to persistence
-    // TODO: 可持久化到 settingsService
-    // TODO: 通知声音检测服务是否发送提醒
+    // TODO: 预留：通知声音检测服务是否发送提醒
+    // if (soundDetectionService != null) soundDetectionService.setRemindEnabled(value);
   }
 
   SettingsViewModel({required this.settingsService, required this.cameraService});
 
-  // TODO: 加载所有设置项
+  // 加载所有设置项
   Future<void> loadSettings() async {
      await loadThemeMode();
      // 加载其他设置项，使用 ?? 提供默认值
@@ -126,6 +125,10 @@ class SettingsViewModel extends ChangeNotifier {
      }
      await cameraService.setResolution(preset);
      await cameraService.setNightVision(_isNightVisionEnabled);
+     // TODO: 预留：应用运动检测灵敏度、提醒等到相关服务
+     // if (motionDetectionService != null) motionDetectionService.setSensitivity(_motionSensitivity);
+     // if (motionDetectionService != null) motionDetectionService.setRemindEnabled(_isMotionDetectionRemindEnabled);
+     // if (soundDetectionService != null) soundDetectionService.setRemindEnabled(_isSoundRemindEnabled);
      notifyListeners(); // 加载完成后通知一次
   }
 
