@@ -48,26 +48,27 @@ class StreamingService {
     print('MJPEG 服务器已停止');
   }
 
+  Future<void> handleCameraImage(CameraImage cameraImage) async {
+    if (_mjpegStreamController == null || _mjpegStreamController!.isClosed) {
+      cameraService.stopImageStream();
+      return;
+    }
+    final jpegData = await imageConversionService.convertCameraImageToJpeg(cameraImage);
+    if (jpegData != null && !_mjpegStreamController!.isClosed) {
+      _mjpegStreamController!.add(utf8.encode('--frame\r\n'));
+      _mjpegStreamController!.add(utf8.encode('Content-Type: image/jpeg\r\n'));
+      _mjpegStreamController!.add(utf8.encode('Content-Length: ${jpegData.length}\r\n'));
+      _mjpegStreamController!.add(utf8.encode('X-Timestamp: ${DateTime.now().millisecondsSinceEpoch}\r\n'));
+      _mjpegStreamController!.add(utf8.encode('\r\n'));
+      _mjpegStreamController!.add(jpegData);
+      _mjpegStreamController!.add(utf8.encode('\r\n'));
+    }
+  }
+
   shelf.Response _mjpegStreamHandler(shelf.Request request) {
     _mjpegStreamController = StreamController<List<int>>(
       onListen: () {
-        print('MJPEG 客户端已连接，开始推送帧...');
-        cameraService.startImageStream((CameraImage cameraImage) async {
-          if (_mjpegStreamController == null || _mjpegStreamController!.isClosed) {
-            cameraService.stopImageStream();
-            return;
-          }
-          final jpegData = await imageConversionService.convertCameraImageToJpeg(cameraImage);
-          if (jpegData != null && !_mjpegStreamController!.isClosed) {
-            _mjpegStreamController!.add(utf8.encode('--frame\r\n'));
-            _mjpegStreamController!.add(utf8.encode('Content-Type: image/jpeg\r\n'));
-            _mjpegStreamController!.add(utf8.encode('Content-Length: ${jpegData.length}\r\n'));
-            _mjpegStreamController!.add(utf8.encode('X-Timestamp: ${DateTime.now().millisecondsSinceEpoch}\r\n'));
-            _mjpegStreamController!.add(utf8.encode('\r\n'));
-            _mjpegStreamController!.add(jpegData);
-            _mjpegStreamController!.add(utf8.encode('\r\n'));
-          }
-        });
+        print('MJPEG 客户端已连接，准备推送帧...');
       },
       onCancel: () {
         print('MJPEG 客户端已断开');

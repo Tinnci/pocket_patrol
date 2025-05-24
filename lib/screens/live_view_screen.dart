@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:camera/camera.dart';
 import '../viewmodels/live_view_viewmodel.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'recording_player_screen.dart';
 
 class LiveViewScreen extends StatefulWidget {
   const LiveViewScreen({Key? key}) : super(key: key);
@@ -13,6 +14,7 @@ class LiveViewScreen extends StatefulWidget {
 
 class _LiveViewScreenState extends State<LiveViewScreen> {
   bool _triedInit = false;
+  String? _lastSnackPath; // 防止重复弹出
 
   @override
   void didChangeDependencies() {
@@ -21,7 +23,39 @@ class _LiveViewScreenState extends State<LiveViewScreen> {
     if (!_triedInit) {
       final viewModel = Provider.of<LiveViewViewModel>(context, listen: false);
       viewModel.initializeCamera();
+      viewModel.addListener(_handleRecordingFinished);
       _triedInit = true;
+    }
+  }
+
+  @override
+  void dispose() {
+    Provider.of<LiveViewViewModel>(context, listen: false).removeListener(_handleRecordingFinished);
+    super.dispose();
+  }
+
+  void _handleRecordingFinished() {
+    final viewModel = Provider.of<LiveViewViewModel>(context, listen: false);
+    if (!viewModel.isRecording && viewModel.lastRecordedPath != null && viewModel.lastRecordedPath != _lastSnackPath) {
+      _lastSnackPath = viewModel.lastRecordedPath;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('录像已保存'),
+          action: SnackBarAction(
+            label: '查看',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => RecordingPlayerScreen(
+                    videoPath: viewModel.lastRecordedPath!,
+                    title: '最新录像',
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
     }
   }
 
@@ -98,15 +132,17 @@ class _LiveViewScreenState extends State<LiveViewScreen> {
                     ),
                   ),
                   label: Text(viewModel.isRecording ? '停止录像' : '开始录像', style: const TextStyle(fontSize: 16)),
-                  onPressed: viewModel.isRecording
-                      ? () => viewModel.stopRecording()
-                      : () => viewModel.startRecording(),
+                  onPressed: viewModel.isBusy
+                      ? null
+                      : (viewModel.isRecording
+                          ? () => viewModel.stopRecording()
+                          : () => viewModel.startRecording()),
                 ),
               ),
               const SizedBox(height: 16),
               // 推流按钮
               FilledButton(
-                onPressed: () => viewModel.toggleStreaming(),
+                onPressed: viewModel.isBusy && !viewModel.isStreaming ? null : () => viewModel.toggleStreaming(),
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(48),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -202,7 +238,7 @@ class _LiveViewScreenState extends State<LiveViewScreen> {
               const SizedBox(height: 16),
               // WebRTC 推流按钮
               FilledButton(
-                onPressed: () => viewModel.toggleWebRTCStreaming(),
+                onPressed: viewModel.isBusy && !viewModel.isWebRTCStreaming ? null : () => viewModel.toggleWebRTCStreaming(),
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(48),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
